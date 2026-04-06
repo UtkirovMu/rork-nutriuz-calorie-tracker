@@ -28,8 +28,8 @@ export async function clearToken(): Promise<void> {
   await AsyncStorage.removeItem(TOKEN_KEY);
 }
 
-const REQUEST_TIMEOUT = 15000;
-const MAX_RETRIES = 2;
+const REQUEST_TIMEOUT = 10000;
+const MAX_RETRIES = 1;
 const RETRY_DELAY = 1000;
 
 function delay(ms: number): Promise<void> {
@@ -62,6 +62,9 @@ async function request<T>(
     const token = await getToken();
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    } else {
+      console.log(`[API] No token available for authenticated request ${method} ${endpoint}`);
+      throw new ApiError('Token mavjud emas. Iltimos, qayta kiring.', 401);
     }
   }
 
@@ -85,7 +88,6 @@ async function request<T>(
         method,
         headers,
         signal: controller.signal,
-        mode: 'cors' as RequestMode,
       };
       if (bodyString) {
         config.body = bodyString;

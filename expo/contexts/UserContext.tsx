@@ -5,6 +5,7 @@ import createContextHook from '@nkzw/create-context-hook';
 import { UserProfile, DailyTargets, MealEntry, MealType, WeightEntry, UnlockedAchievement, AchievementId, ProgressPhoto } from '@/types';
 import { calculateDailyTargets, getTodayDateString } from '@/utils/calculations';
 import { profileApi, mealsApi, weightApi, achievementsApi, photosApi, streakApi } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 const PROFILE_KEY = 'nutriuz_profile';
 const MEALS_KEY = 'nutriuz_meals';
@@ -33,6 +34,8 @@ interface StreakData {
 
 export const [UserProvider, useUser] = createContextHook(() => {
   const queryClient = useQueryClient();
+  const { auth } = useAuth();
+  const isLoggedIn = auth.isLoggedIn;
   const [profile, setProfile] = useState<UserProfile>(defaultProfile);
   const [meals, setMeals] = useState<MealEntry[]>([]);
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
@@ -55,6 +58,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
       const stored = await AsyncStorage.getItem(PROFILE_KEY);
       return stored ? (JSON.parse(stored) as UserProfile) : defaultProfile;
     },
+    enabled: isLoggedIn,
   });
 
   const mealsQuery = useQuery({
@@ -72,6 +76,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
       const stored = await AsyncStorage.getItem(MEALS_KEY);
       return stored ? (JSON.parse(stored) as MealEntry[]) : [];
     },
+    enabled: isLoggedIn,
   });
 
   const weightQuery = useQuery({
@@ -89,6 +94,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
       const stored = await AsyncStorage.getItem(WEIGHT_KEY);
       return stored ? (JSON.parse(stored) as WeightEntry[]) : [];
     },
+    enabled: isLoggedIn,
   });
 
   const achievementsQuery = useQuery({
@@ -106,6 +112,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
       const stored = await AsyncStorage.getItem(ACHIEVEMENTS_KEY);
       return stored ? (JSON.parse(stored) as UnlockedAchievement[]) : [];
     },
+    enabled: isLoggedIn,
   });
 
   const photosQuery = useQuery({
@@ -123,6 +130,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
       const stored = await AsyncStorage.getItem(PHOTOS_KEY);
       return stored ? (JSON.parse(stored) as ProgressPhoto[]) : [];
     },
+    enabled: isLoggedIn,
   });
 
   const streakQuery = useQuery({
@@ -140,6 +148,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
       const stored = await AsyncStorage.getItem(STREAK_KEY);
       return stored ? (JSON.parse(stored) as StreakData) : { currentStreak: 0, lastLogDate: '', longestStreak: 0 };
     },
+    enabled: isLoggedIn,
   });
 
   useEffect(() => { if (profileQuery.data) setProfile(profileQuery.data); }, [profileQuery.data]);
