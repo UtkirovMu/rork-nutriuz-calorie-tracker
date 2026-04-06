@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   UserProfile,
@@ -102,17 +101,13 @@ async function request<T>(
     ...(options.headers as Record<string, string>),
   };
 
-  if (Platform.OS !== 'web') {
-    headers['X-API-Key'] = API_SECRET_KEY;
-  }
+  headers['X-API-Key'] = API_SECRET_KEY;
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const separator = endpoint.includes('?') ? '&' : '?';
-  const apiKeyParam = Platform.OS === 'web' ? `${separator}api_key=${API_SECRET_KEY}` : '';
-  const url = `${BASE_URL}${endpoint}${apiKeyParam}`;
+  const url = `${BASE_URL}${endpoint}`;
   console.log(`[API] ${options.method || 'GET'} ${url}`);
 
   try {
