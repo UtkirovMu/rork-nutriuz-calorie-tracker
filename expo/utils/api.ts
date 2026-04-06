@@ -92,7 +92,7 @@ export async function clearAuthData(): Promise<void> {
 async function request<T>(
   endpoint: string,
   options: RequestInit = {},
-  retries: number = 2
+  retries: number = 3
 ): Promise<ApiResponse<T>> {
   const token = await getToken();
   const headers: Record<string, string> = {
@@ -111,24 +111,27 @@ async function request<T>(
   console.log(`[API] ${options.method || 'GET'} ${url}`);
 
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-    const response = await fetch(url, {
+    const fetchPromise = fetch(url, {
       ...options,
       headers,
-      signal: controller.signal,
+      mode: 'cors' as RequestMode,
     });
 
-    clearTimeout(timeoutId);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout')), 30000);
+    });
+
+    const response = await Promise.race([fetchPromise, timeoutPromise]);
 
     const text = await response.text();
+    console.log(`[API] Raw response (${response.status}):`, text.slice(0, 300));
+
     let json: ApiResponse<T>;
     try {
       json = JSON.parse(text) as ApiResponse<T>;
     } catch {
       console.error(`[API] Invalid JSON response:`, text.slice(0, 300));
-      throw new Error(`Server returned invalid response`);
+      throw new Error(`Server returned invalid response: ${text.slice(0, 100)}`);
     }
 
     console.log(`[API] Response ${response.status}:`, JSON.stringify(json).slice(0, 200));
@@ -139,17 +142,24 @@ async function request<T>(
 
     return json;
   } catch (error: unknown) {
-    const isNetworkError =
-      error instanceof TypeError && (error.message === 'Failed to fetch' || error.message === 'Network request failed');
-    const isAbortError = error instanceof DOMException && error.name === 'AbortError';
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const isRetryable =
+      errMsg === 'Failed to fetch' ||
+      errMsg === 'Network request failed' ||
+      errMsg === 'Request timeout' ||
+      errMsg.includes('AbortError') ||
+      errMsg.includes('aborted') ||
+      errMsg.includes('network') ||
+      errMsg.includes('CORS');
 
-    if ((isNetworkError || isAbortError) && retries > 0) {
-      console.log(`[API] Retrying... (${retries} left)`);
-      await new Promise((r) => setTimeout(r, 1000));
+    if (isRetryable && retries > 0) {
+      const delay = (4 - retries) * 1500;
+      console.log(`[API] Retrying in ${delay}ms... (${retries} left) Error: ${errMsg}`);
+      await new Promise((r) => setTimeout(r, delay));
       return request<T>(endpoint, options, retries - 1);
     }
 
-    console.error(`[API] Error:`, error);
+    console.error(`[API] Error:`, errMsg);
     throw error;
   }
 }
