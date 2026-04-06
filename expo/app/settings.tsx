@@ -10,6 +10,7 @@ import {
 import { Stack } from 'expo-router';
 import { Sun, Moon, Smartphone, Trash2, Info, Shield, ChevronRight } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
 import { useUser } from '@/contexts/UserContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -41,8 +42,12 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const { dataApi } = await import('@/utils/api');
-              await dataApi.clearRecords();
+              await AsyncStorage.multiRemove([
+                'nutriuz_meals',
+                'nutriuz_weight_history',
+                'nutriuz_progress_photos',
+                'nutriuz_streak',
+              ]);
               Alert.alert(tr('common', 'done'), tr('data', 'dataCleared'));
             } catch (e) {
               console.log('Clear data error:', e);
@@ -65,8 +70,7 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const { dataApi } = await import('@/utils/api');
-              await dataApi.resetAll();
+              await AsyncStorage.clear();
               Alert.alert(tr('common', 'done'), tr('data', 'allDataCleared'));
             } catch (e) {
               console.log('Reset all error:', e);

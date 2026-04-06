@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
-import { authApi, clearToken } from '@/utils/api';
 
 const AUTH_KEY = 'nutriuz_auth';
 
@@ -10,7 +9,6 @@ export interface AuthData {
   isLoggedIn: boolean;
   loginMethod: 'email' | 'phone' | null;
   identifier: string;
-  token?: string;
 }
 
 const defaultAuth: AuthData = {
@@ -48,28 +46,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     },
   });
 
-  const sendOTP = useCallback(async (method: 'email' | 'phone', identifier: string) => {
-    console.log('[Auth] Sending OTP to', method, identifier);
-    const result = await authApi.sendOTP(method, identifier);
-    console.log('[Auth] OTP sent:', result);
-    return result;
-  }, []);
-
-  const verifyOTP = useCallback(async (method: 'email' | 'phone', identifier: string, otp: string) => {
-    console.log('[Auth] Verifying OTP for', method, identifier);
-    const result = await authApi.verifyOTP(method, identifier, otp);
-    console.log('[Auth] OTP verified, token received, onboarding:', result.onboarding_complete);
-
-    const newAuth: AuthData = {
-      isLoggedIn: true,
-      loginMethod: method,
-      identifier,
-      token: result.token,
-    };
-    saveAuthMutation.mutate(newAuth);
-    return result;
-  }, [saveAuthMutation]);
-
   const login = useCallback((method: 'email' | 'phone', identifier: string) => {
     const newAuth: AuthData = {
       isLoggedIn: true,
@@ -79,13 +55,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     saveAuthMutation.mutate(newAuth);
   }, [saveAuthMutation]);
 
-  const logout = useCallback(async () => {
-    try {
-      await authApi.logout();
-    } catch (e) {
-      console.log('[Auth] Logout API error (ignored):', e);
-    }
-    await clearToken();
+  const logout = useCallback(() => {
     saveAuthMutation.mutate(defaultAuth);
   }, [saveAuthMutation]);
 
@@ -95,8 +65,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     auth,
     login,
     logout,
-    sendOTP,
-    verifyOTP,
     isLoading,
-  }), [auth, login, logout, sendOTP, verifyOTP, isLoading]);
+  }), [auth, login, logout, isLoading]);
 });
