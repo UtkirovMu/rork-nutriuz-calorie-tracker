@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile, MealEntry, WeightEntry, UnlockedAchievement, ProgressPhoto, AchievementId } from '@/types';
 
-const API_BASE_URL = 'https://YOUR_DOMAIN.com/api';
+const API_BASE_URL = 'https://68bafc6d1e302.myxvest1.ru/Fitnes/api';
 
 const TOKEN_KEY = 'nutriuz_api_token';
 

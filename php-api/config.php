@@ -5,7 +5,7 @@ define('DB_NAME', 'nutriuz_db');
 define('DB_USER', 'root');
 define('DB_PASS', '');
 
-define('JWT_SECRET', 'your_super_secret_key_change_this_in_production_123!');
+define('JWT_SECRET', 'bshdysd464446846-99');
 define('JWT_EXPIRY', 86400 * 30); // 30 kun
 
 define('OTP_EXPIRY', 300); // 5 daqiqa
