@@ -4,23 +4,83 @@ import { UserProfile, MealEntry, WeightEntry, UnlockedAchievement, ProgressPhoto
 const API_BASE_URL = 'https://68bafc6d1e302.myxvest1.ru/Fitnes/api';
 
 const TOKEN_KEY = 'nutriuz_api_token';
+const AUTH_KEY = 'nutriuz_auth';
 
 let cachedToken: string | null = null;
 
+function sanitizeToken(rawToken: string | null | undefined): string | null {
+  if (typeof rawToken !== 'string') {
+    return null;
+  }
+
+  const normalizedToken = rawToken.replace(/^Bearer\s+/i, '').trim();
+  return normalizedToken.length > 0 ? normalizedToken : null;
+}
+
 async function getToken(): Promise<string | null> {
-  if (cachedToken) return cachedToken;
-  cachedToken = await AsyncStorage.getItem(TOKEN_KEY);
-  return cachedToken;
+  if (cachedToken) {
+    return cachedToken;
+  }
+
+  const storedToken = sanitizeToken(await AsyncStorage.getItem(TOKEN_KEY));
+  if (storedToken) {
+    cachedToken = storedToken;
+    return storedToken;
+  }
+
+  try {
+    const storedAuth = await AsyncStorage.getItem(AUTH_KEY);
+    if (!storedAuth) {
+      return null;
+    }
+
+    const parsedAuth = JSON.parse(storedAuth) as { token?: unknown };
+    const authToken = typeof parsedAuth.token === 'string' ? sanitizeToken(parsedAuth.token) : null;
+
+    if (authToken) {
+      cachedToken = authToken;
+      await AsyncStorage.setItem(TOKEN_KEY, authToken);
+      console.log('[API] Token restored from auth storage');
+      return authToken;
+    }
+  } catch (error) {
+    console.log('[API] Failed to restore token from auth storage:', error);
+  }
+
+  return null;
 }
 
 async function setToken(token: string): Promise<void> {
-  cachedToken = token;
-  await AsyncStorage.setItem(TOKEN_KEY, token);
+  const normalizedToken = sanitizeToken(token);
+
+  if (!normalizedToken) {
+    cachedToken = null;
+    await AsyncStorage.removeItem(TOKEN_KEY);
+    return;
+  }
+
+  cachedToken = normalizedToken;
+  await AsyncStorage.setItem(TOKEN_KEY, normalizedToken);
 }
 
 async function clearToken(): Promise<void> {
   cachedToken = null;
   await AsyncStorage.removeItem(TOKEN_KEY);
+}
+
+export async function syncStoredToken(token: string | null | undefined): Promise<void> {
+  const normalizedToken = sanitizeToken(token);
+
+  if (!normalizedToken) {
+    await clearToken();
+    return;
+  }
+
+  await setToken(normalizedToken);
+}
+
+export async function clearStoredToken(): Promise<void> {
+  await clearToken();
 }
 
 interface ApiResponse<T = unknown> {
@@ -51,7 +111,10 @@ async function apiRequest<T>(
       console.log('[API] No token found, skipping auth request to', endpoint);
       throw new Error('NOT_AUTHENTICATED');
     }
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
+    headers['X-Authorization'] = `Bearer ${token}`;
+    headers['X-Access-Token'] = token;
+    console.log('[API] Auth headers attached for', endpoint);
   }
 
   const config: RequestInit = {

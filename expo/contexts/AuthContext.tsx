@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
-import { authApi } from '@/utils/api';
+import { authApi, clearStoredToken, syncStoredToken } from '@/utils/api';
 
 const AUTH_KEY = 'nutriuz_auth';
 
@@ -27,7 +27,15 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     queryKey: ['auth'],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(AUTH_KEY);
-      return stored ? (JSON.parse(stored) as AuthData) : defaultAuth;
+      const parsedAuth = stored ? (JSON.parse(stored) as AuthData) : defaultAuth;
+
+      if (parsedAuth.isLoggedIn && parsedAuth.token) {
+        await syncStoredToken(parsedAuth.token);
+      } else if (!parsedAuth.isLoggedIn) {
+        await clearStoredToken();
+      }
+
+      return parsedAuth;
     },
   });
 
@@ -39,6 +47,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const saveAuthMutation = useMutation({
     mutationFn: async (data: AuthData) => {
+      if (data.isLoggedIn && data.token) {
+        await syncStoredToken(data.token);
+      } else {
+        await clearStoredToken();
+      }
+
       await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(data));
       return data;
     },
@@ -76,18 +90,18 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       identifier,
       token: result.token,
     };
-    saveAuthMutation.mutate(newAuth);
+    await saveAuthMutation.mutateAsync(newAuth);
     return result;
   }, [verifyCodeMutation, saveAuthMutation]);
 
-  const login = useCallback((method: 'email' | 'phone', identifier: string, token?: string) => {
+  const login = useCallback(async (method: 'email' | 'phone', identifier: string, token?: string) => {
     const newAuth: AuthData = {
       isLoggedIn: true,
       loginMethod: method,
       identifier,
       token,
     };
-    saveAuthMutation.mutate(newAuth);
+    await saveAuthMutation.mutateAsync(newAuth);
   }, [saveAuthMutation]);
 
   const logout = useCallback(async () => {
@@ -96,7 +110,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     } catch (e) {
       console.log('[Auth] API logout error (ignored):', e);
     }
-    saveAuthMutation.mutate(defaultAuth);
+    await saveAuthMutation.mutateAsync(defaultAuth);
   }, [saveAuthMutation]);
 
   const isLoading = authQuery.isLoading;

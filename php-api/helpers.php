@@ -3,7 +3,7 @@
 function cors() {
     header("Access-Control-Allow-Origin: " . CORS_ORIGIN);
     header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-    header("Access-Control-Allow-Headers: Content-Type, Authorization");
+    header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Authorization, X-Access-Token");
     header("Content-Type: application/json; charset=utf-8");
 
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -74,13 +74,58 @@ function verifyJWT(string $token): ?array {
     return $data;
 }
 
+function getAuthorizationHeaderValue(): string {
+    $candidates = [
+        $_SERVER['HTTP_AUTHORIZATION'] ?? null,
+        $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? null,
+        $_SERVER['Authorization'] ?? null,
+        $_SERVER['HTTP_X_AUTHORIZATION'] ?? null,
+        $_SERVER['HTTP_X_ACCESS_TOKEN'] ?? null,
+    ];
+
+    foreach ($candidates as $candidate) {
+        if (is_string($candidate) && trim($candidate) !== '') {
+            return trim($candidate);
+        }
+    }
+
+    if (function_exists('getallheaders')) {
+        $headers = getallheaders();
+        foreach ($headers as $key => $value) {
+            $normalizedKey = strtolower((string)$key);
+            if (in_array($normalizedKey, ['authorization', 'x-authorization', 'x-access-token'], true) && is_string($value) && trim($value) !== '') {
+                return trim($value);
+            }
+        }
+    }
+
+    if (function_exists('apache_request_headers')) {
+        $headers = apache_request_headers();
+        foreach ($headers as $key => $value) {
+            $normalizedKey = strtolower((string)$key);
+            if (in_array($normalizedKey, ['authorization', 'x-authorization', 'x-access-token'], true) && is_string($value) && trim($value) !== '') {
+                return trim($value);
+            }
+        }
+    }
+
+    return '';
+}
+
 function getAuthUserId(): int {
-    $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-    if (!preg_match('/^Bearer\s+(.+)$/i', $authHeader, $matches)) {
+    $authHeader = getAuthorizationHeaderValue();
+    if ($authHeader === '') {
         error('Token topilmadi', 401);
     }
 
-    $data = verifyJWT($matches[1]);
+    $token = preg_replace('/^Bearer\s+/i', '', $authHeader);
+    $token = is_string($token) ? trim($token) : '';
+
+    if ($token === '') {
+        error('Token topilmadi', 401);
+    }
+
+    $data = verifyJWT($token);
     if (!$data || !isset($data['user_id'])) {
         error('Token yaroqsiz yoki muddati tugagan', 401);
     }
