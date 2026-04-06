@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
 import { UserProfile, DailyTargets, MealEntry, MealType, WeightEntry, UnlockedAchievement, AchievementId, ProgressPhoto } from '@/types';
 import { calculateDailyTargets, getTodayDateString } from '@/utils/calculations';
-import { profileApi, mealsApi, weightApi, achievementsApi, photosApi, streakApi, getToken } from '@/utils/api';
 
 const PROFILE_KEY = 'nutriuz_profile';
 const MEALS_KEY = 'nutriuz_meals';
@@ -31,34 +30,6 @@ interface StreakData {
   longestStreak: number;
 }
 
-async function loadLocal<T>(key: string, fallback: T): Promise<T> {
-  try {
-    const stored = await AsyncStorage.getItem(key);
-    return stored ? (JSON.parse(stored) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-async function saveLocal(key: string, data: unknown): Promise<void> {
-  try {
-    await AsyncStorage.setItem(key, JSON.stringify(data));
-  } catch (e) {
-    console.log('[UserContext] saveLocal error:', e);
-  }
-}
-
-async function fetchWithFallback<T>(apiFn: () => Promise<T>, key: string, fallback: T): Promise<T> {
-  try {
-    const data = await apiFn();
-    await saveLocal(key, data);
-    return data;
-  } catch (e) {
-    console.log('[UserContext] API fetch failed, using local:', e);
-    return loadLocal(key, fallback);
-  }
-}
-
 export const [UserProvider, useUser] = createContextHook(() => {
   const queryClient = useQueryClient();
   const [profile, setProfile] = useState<UserProfile>(defaultProfile);
@@ -67,49 +38,53 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const [achievements, setAchievements] = useState<UnlockedAchievement[]>([]);
   const [progressPhotos, setProgressPhotos] = useState<ProgressPhoto[]>([]);
   const [streak, setStreak] = useState<StreakData>({ currentStreak: 0, lastLogDate: '', longestStreak: 0 });
-  const [hasToken, setHasToken] = useState<boolean>(false);
-
-  useEffect(() => {
-    void getToken().then((token: string | null) => {
-      setHasToken(!!token);
-      console.log('[UserContext] Token mavjud:', !!token);
-    });
-  }, []);
 
   const profileQuery = useQuery({
     queryKey: ['profile'],
-    queryFn: () => fetchWithFallback(profileApi.get, PROFILE_KEY, defaultProfile),
-    enabled: hasToken,
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(PROFILE_KEY);
+      return stored ? (JSON.parse(stored) as UserProfile) : defaultProfile;
+    },
   });
 
   const mealsQuery = useQuery({
     queryKey: ['meals'],
-    queryFn: () => fetchWithFallback(mealsApi.getAll, MEALS_KEY, [] as MealEntry[]),
-    enabled: hasToken,
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(MEALS_KEY);
+      return stored ? (JSON.parse(stored) as MealEntry[]) : [];
+    },
   });
 
   const weightQuery = useQuery({
     queryKey: ['weightHistory'],
-    queryFn: () => fetchWithFallback(weightApi.getAll, WEIGHT_KEY, [] as WeightEntry[]),
-    enabled: hasToken,
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(WEIGHT_KEY);
+      return stored ? (JSON.parse(stored) as WeightEntry[]) : [];
+    },
   });
 
   const achievementsQuery = useQuery({
     queryKey: ['achievements'],
-    queryFn: () => fetchWithFallback(achievementsApi.getAll, ACHIEVEMENTS_KEY, [] as UnlockedAchievement[]),
-    enabled: hasToken,
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(ACHIEVEMENTS_KEY);
+      return stored ? (JSON.parse(stored) as UnlockedAchievement[]) : [];
+    },
   });
 
   const photosQuery = useQuery({
     queryKey: ['progressPhotos'],
-    queryFn: () => fetchWithFallback(photosApi.getAll, PHOTOS_KEY, [] as ProgressPhoto[]),
-    enabled: hasToken,
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(PHOTOS_KEY);
+      return stored ? (JSON.parse(stored) as ProgressPhoto[]) : [];
+    },
   });
 
   const streakQuery = useQuery({
     queryKey: ['streak'],
-    queryFn: () => fetchWithFallback(streakApi.get, STREAK_KEY, { currentStreak: 0, lastLogDate: '', longestStreak: 0 }),
-    enabled: hasToken,
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(STREAK_KEY);
+      return stored ? (JSON.parse(stored) as StreakData) : { currentStreak: 0, lastLogDate: '', longestStreak: 0 };
+    },
   });
 
   useEffect(() => { if (profileQuery.data) setProfile(profileQuery.data); }, [profileQuery.data]);
@@ -121,12 +96,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
 
   const saveProfileMutation = useMutation({
     mutationFn: async (newProfile: UserProfile) => {
-      await saveLocal(PROFILE_KEY, newProfile);
-      try {
-        await profileApi.update(newProfile);
-      } catch (e) {
-        console.log('[UserContext] API profile update failed:', e);
-      }
+      await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(newProfile));
       return newProfile;
     },
     onSuccess: (data) => {
@@ -137,7 +107,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
 
   const saveMealsMutation = useMutation({
     mutationFn: async (newMeals: MealEntry[]) => {
-      await saveLocal(MEALS_KEY, newMeals);
+      await AsyncStorage.setItem(MEALS_KEY, JSON.stringify(newMeals));
       return newMeals;
     },
     onSuccess: (data) => {
@@ -148,7 +118,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
 
   const saveWeightMutation = useMutation({
     mutationFn: async (entries: WeightEntry[]) => {
-      await saveLocal(WEIGHT_KEY, entries);
+      await AsyncStorage.setItem(WEIGHT_KEY, JSON.stringify(entries));
       return entries;
     },
     onSuccess: (data) => {
@@ -159,7 +129,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
 
   const saveAchievementsMutation = useMutation({
     mutationFn: async (entries: UnlockedAchievement[]) => {
-      await saveLocal(ACHIEVEMENTS_KEY, entries);
+      await AsyncStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(entries));
       return entries;
     },
     onSuccess: (data) => {
@@ -170,7 +140,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
 
   const savePhotosMutation = useMutation({
     mutationFn: async (entries: ProgressPhoto[]) => {
-      await saveLocal(PHOTOS_KEY, entries);
+      await AsyncStorage.setItem(PHOTOS_KEY, JSON.stringify(entries));
       return entries;
     },
     onSuccess: (data) => {
@@ -181,12 +151,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
 
   const saveStreakMutation = useMutation({
     mutationFn: async (data: StreakData) => {
-      await saveLocal(STREAK_KEY, data);
-      try {
-        await streakApi.update(data);
-      } catch (e) {
-        console.log('[UserContext] API streak update failed:', e);
-      }
+      await AsyncStorage.setItem(STREAK_KEY, JSON.stringify(data));
       return data;
     },
     onSuccess: (data) => {
@@ -203,12 +168,6 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const addMeal = useCallback((entry: MealEntry) => {
     const updated = [...meals, entry];
     saveMealsMutation.mutate(updated);
-
-    try {
-      mealsApi.add(entry).catch(e => console.log('[UserContext] API meal add failed:', e));
-    } catch (e) {
-      console.log('[UserContext] API meal add failed:', e);
-    }
 
     const today = getTodayDateString();
     const yesterday = (() => {
@@ -233,11 +192,6 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const removeMeal = useCallback((id: string) => {
     const updated = meals.filter(m => m.id !== id);
     saveMealsMutation.mutate(updated);
-    try {
-      mealsApi.remove(id).catch(e => console.log('[UserContext] API meal remove failed:', e));
-    } catch (e) {
-      console.log('[UserContext] API meal remove failed:', e);
-    }
   }, [meals, saveMealsMutation]);
 
   const addWeightEntry = useCallback((weight: number) => {
@@ -246,22 +200,12 @@ export const [UserProvider, useUser] = createContextHook(() => {
     const updated = [...existing, { date: today, weight }];
     updated.sort((a, b) => a.date.localeCompare(b.date));
     saveWeightMutation.mutate(updated);
-    try {
-      weightApi.add({ date: today, weight }).catch(e => console.log('[UserContext] API weight add failed:', e));
-    } catch (e) {
-      console.log('[UserContext] API weight add failed:', e);
-    }
   }, [weightHistory, saveWeightMutation]);
 
   const unlockAchievement = useCallback((id: AchievementId) => {
     if (achievements.some(a => a.id === id)) return false;
     const updated = [...achievements, { id, unlockedAt: Date.now() }];
     saveAchievementsMutation.mutate(updated);
-    try {
-      achievementsApi.unlock(id).catch(e => console.log('[UserContext] API achievement unlock failed:', e));
-    } catch (e) {
-      console.log('[UserContext] API achievement unlock failed:', e);
-    }
     return true;
   }, [achievements, saveAchievementsMutation]);
 
@@ -279,22 +223,12 @@ export const [UserProvider, useUser] = createContextHook(() => {
     };
     const updated = [...progressPhotos, photo];
     savePhotosMutation.mutate(updated);
-    try {
-      photosApi.add(photo).catch(e => console.log('[UserContext] API photo add failed:', e));
-    } catch (e) {
-      console.log('[UserContext] API photo add failed:', e);
-    }
     return photo;
   }, [progressPhotos, savePhotosMutation]);
 
   const removeProgressPhoto = useCallback((id: string) => {
     const updated = progressPhotos.filter(p => p.id !== id);
     savePhotosMutation.mutate(updated);
-    try {
-      photosApi.remove(id).catch(e => console.log('[UserContext] API photo remove failed:', e));
-    } catch (e) {
-      console.log('[UserContext] API photo remove failed:', e);
-    }
   }, [progressPhotos, savePhotosMutation]);
 
   const dailyTargets: DailyTargets = useMemo(() => {

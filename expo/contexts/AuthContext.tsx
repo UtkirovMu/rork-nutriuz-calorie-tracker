@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
-import { authApi, clearAuthData } from '@/utils/api';
 
 const AUTH_KEY = 'nutriuz_auth';
 
@@ -10,8 +9,6 @@ export interface AuthData {
   isLoggedIn: boolean;
   loginMethod: 'email' | 'phone' | null;
   identifier: string;
-  token?: string;
-  userId?: number;
 }
 
 const defaultAuth: AuthData = {
@@ -49,36 +46,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     },
   });
 
-  const sendCode = useCallback(async (method: 'email' | 'phone', identifier: string) => {
-    try {
-      const result = await authApi.sendCode(method, identifier);
-      console.log('[Auth] OTP sent:', result);
-      return result;
-    } catch (error) {
-      console.error('[Auth] Send code error:', error);
-      throw error;
-    }
-  }, []);
-
-  const verifyCode = useCallback(async (method: 'email' | 'phone', identifier: string, code: string) => {
-    try {
-      const result = await authApi.verifyCode(method, identifier, code);
-      console.log('[Auth] Verify result:', result);
-      const newAuth: AuthData = {
-        isLoggedIn: true,
-        loginMethod: method,
-        identifier,
-        token: result.token,
-        userId: result.user_id,
-      };
-      saveAuthMutation.mutate(newAuth);
-      return result;
-    } catch (error) {
-      console.error('[Auth] Verify code error:', error);
-      throw error;
-    }
-  }, [saveAuthMutation]);
-
   const login = useCallback((method: 'email' | 'phone', identifier: string) => {
     const newAuth: AuthData = {
       isLoggedIn: true,
@@ -88,13 +55,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     saveAuthMutation.mutate(newAuth);
   }, [saveAuthMutation]);
 
-  const logout = useCallback(async () => {
-    try {
-      await authApi.logout();
-    } catch (e) {
-      console.log('[Auth] Logout API error (ignored):', e);
-    }
-    await clearAuthData();
+  const logout = useCallback(() => {
     saveAuthMutation.mutate(defaultAuth);
   }, [saveAuthMutation]);
 
@@ -104,8 +65,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     auth,
     login,
     logout,
-    sendCode,
-    verifyCode,
     isLoading,
-  }), [auth, login, logout, sendCode, verifyCode, isLoading]);
+  }), [auth, login, logout, isLoading]);
 });
