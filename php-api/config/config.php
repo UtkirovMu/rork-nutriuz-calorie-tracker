@@ -4,13 +4,14 @@ define('JWT_SECRET', getenv('JWT_SECRET') ?: 'your-secret-key-change-this-in-pro
 define('JWT_EXPIRY', 60 * 60 * 24 * 30); // 30 days
 define('OTP_EXPIRY', 300); // 5 minutes
 define('CORS_ORIGIN', '*');
+define('API_SECRET_KEY', 'hdiuasd76887');
 
 date_default_timezone_set('Asia/Tashkent');
 
 function cors_headers() {
     header('Access-Control-Allow-Origin: ' . CORS_ORIGIN);
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key, Accept');
     header('Content-Type: application/json; charset=utf-8');
 
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -71,6 +72,16 @@ function base64url_encode(string $data): string {
 
 function base64url_decode(string $data): string {
     return base64_decode(strtr($data, '-_', '+/') . str_repeat('=', 3 - (3 + strlen($data)) % 4));
+}
+
+function verify_api_key(): void {
+    $api_key = $_SERVER['HTTP_X_API_KEY'] ?? '';
+    if (empty($api_key)) {
+        $api_key = $_GET['api_key'] ?? '';
+    }
+    if ($api_key !== API_SECRET_KEY) {
+        error_response('API kalit noto\'g\'ri', 403);
+    }
 }
 
 function get_auth_user_id(): int {

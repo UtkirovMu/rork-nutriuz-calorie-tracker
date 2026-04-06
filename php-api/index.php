@@ -4,6 +4,7 @@ require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/database.php';
 
 cors_headers();
+verify_api_key();
 
 $request_uri = $_SERVER['REQUEST_URI'];
 $base_path = '/api';
