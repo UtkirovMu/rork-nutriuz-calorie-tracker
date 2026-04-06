@@ -10,6 +10,7 @@ import {
 
 const API_TOKEN_KEY = 'nutriuz_api_token';
 const API_USER_ID_KEY = 'nutriuz_api_user_id';
+const API_SECRET_KEY = 'your-secret-key-change-this-in-production';
 
 let BASE_URL = 'https://68bafc6d1e302.myxvest1.ru/Fitnes/api';
 
@@ -96,6 +97,7 @@ async function request<T>(
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
+    'X-API-Key': API_SECRET_KEY,
     ...(options.headers as Record<string, string>),
   };
 
