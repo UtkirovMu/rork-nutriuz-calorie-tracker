@@ -28,7 +28,6 @@ import {
   Info,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LogOut } from 'lucide-react-native';
 import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
 import { useUser } from '@/contexts/UserContext';
@@ -84,13 +83,8 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.multiRemove([
-                'nutriuz_meals',
-                'nutriuz_weight_history',
-                'nutriuz_progress_photos',
-                'nutriuz_streak',
-                'nutriuz_meal_plan',
-              ]);
+              const { dataApi } = await import('@/utils/api');
+              await dataApi.clearRecords();
               Alert.alert('Tayyor', "Ma'lumotlar tozalandi. Ilovani qayta oching.");
             } catch (e) {
               console.log('Clear data error:', e);
@@ -113,7 +107,8 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.clear();
+              const { dataApi } = await import('@/utils/api');
+              await dataApi.resetAll();
               Alert.alert('Tayyor', "Barcha ma'lumotlar tozalandi. Ilovani qayta oching.");
             } catch (e) {
               console.log('Reset all error:', e);
@@ -736,7 +731,7 @@ export default function ProfileScreen() {
                       text: tr('login', 'logout'),
                       style: 'destructive',
                       onPress: () => {
-                        logout();
+                        void logout();
                         router.replace('/login');
                       },
                     },

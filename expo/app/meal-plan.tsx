@@ -17,6 +17,7 @@ import { generateObject } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/contexts/ThemeContext';
+import { mealPlanApi } from '@/utils/api';
 import { useUser } from '@/contexts/UserContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -95,6 +96,12 @@ Har bir kunning jami kaloriyasi ${dailyTargets.calories} kkal atrofida bo'lsin.`
       });
 
       await AsyncStorage.setItem(MEAL_PLAN_CACHE_KEY, JSON.stringify(result));
+      try {
+        await mealPlanApi.save(result as unknown as Record<string, unknown>);
+        console.log('[MealPlan] Synced to API');
+      } catch (e) {
+        console.log('[MealPlan] API sync failed:', e);
+      }
       void queryClient.invalidateQueries({ queryKey: ['mealPlanCache'] });
 
       unlockAchievement('meal_plan_first');

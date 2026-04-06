@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
 import { UserProfile, DailyTargets, MealEntry, MealType, WeightEntry, UnlockedAchievement, AchievementId, ProgressPhoto } from '@/types';
 import { calculateDailyTargets, getTodayDateString } from '@/utils/calculations';
+import { profileApi, mealsApi, weightApi, achievementsApi, photosApi, streakApi } from '@/utils/api';
 
 const PROFILE_KEY = 'nutriuz_profile';
 const MEALS_KEY = 'nutriuz_meals';
@@ -42,6 +43,15 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const profileQuery = useQuery({
     queryKey: ['profile'],
     queryFn: async () => {
+      try {
+        const res = await profileApi.get();
+        if (res.success && res.profile) {
+          await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(res.profile));
+          return res.profile;
+        }
+      } catch (e) {
+        console.log('[UserContext] API profile fetch failed, using local:', e);
+      }
       const stored = await AsyncStorage.getItem(PROFILE_KEY);
       return stored ? (JSON.parse(stored) as UserProfile) : defaultProfile;
     },
@@ -50,6 +60,15 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const mealsQuery = useQuery({
     queryKey: ['meals'],
     queryFn: async () => {
+      try {
+        const res = await mealsApi.getAll();
+        if (res.success) {
+          await AsyncStorage.setItem(MEALS_KEY, JSON.stringify(res.meals));
+          return res.meals;
+        }
+      } catch (e) {
+        console.log('[UserContext] API meals fetch failed, using local:', e);
+      }
       const stored = await AsyncStorage.getItem(MEALS_KEY);
       return stored ? (JSON.parse(stored) as MealEntry[]) : [];
     },
@@ -58,6 +77,15 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const weightQuery = useQuery({
     queryKey: ['weightHistory'],
     queryFn: async () => {
+      try {
+        const res = await weightApi.getAll();
+        if (res.success) {
+          await AsyncStorage.setItem(WEIGHT_KEY, JSON.stringify(res.weightHistory));
+          return res.weightHistory;
+        }
+      } catch (e) {
+        console.log('[UserContext] API weight fetch failed, using local:', e);
+      }
       const stored = await AsyncStorage.getItem(WEIGHT_KEY);
       return stored ? (JSON.parse(stored) as WeightEntry[]) : [];
     },
@@ -66,6 +94,15 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const achievementsQuery = useQuery({
     queryKey: ['achievements'],
     queryFn: async () => {
+      try {
+        const res = await achievementsApi.getAll();
+        if (res.success) {
+          await AsyncStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(res.achievements));
+          return res.achievements;
+        }
+      } catch (e) {
+        console.log('[UserContext] API achievements fetch failed, using local:', e);
+      }
       const stored = await AsyncStorage.getItem(ACHIEVEMENTS_KEY);
       return stored ? (JSON.parse(stored) as UnlockedAchievement[]) : [];
     },
@@ -74,6 +111,15 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const photosQuery = useQuery({
     queryKey: ['progressPhotos'],
     queryFn: async () => {
+      try {
+        const res = await photosApi.getAll();
+        if (res.success) {
+          await AsyncStorage.setItem(PHOTOS_KEY, JSON.stringify(res.photos));
+          return res.photos;
+        }
+      } catch (e) {
+        console.log('[UserContext] API photos fetch failed, using local:', e);
+      }
       const stored = await AsyncStorage.getItem(PHOTOS_KEY);
       return stored ? (JSON.parse(stored) as ProgressPhoto[]) : [];
     },
@@ -82,6 +128,15 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const streakQuery = useQuery({
     queryKey: ['streak'],
     queryFn: async () => {
+      try {
+        const res = await streakApi.get();
+        if (res.success) {
+          await AsyncStorage.setItem(STREAK_KEY, JSON.stringify(res.streak));
+          return res.streak;
+        }
+      } catch (e) {
+        console.log('[UserContext] API streak fetch failed, using local:', e);
+      }
       const stored = await AsyncStorage.getItem(STREAK_KEY);
       return stored ? (JSON.parse(stored) as StreakData) : { currentStreak: 0, lastLogDate: '', longestStreak: 0 };
     },
@@ -97,6 +152,12 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const saveProfileMutation = useMutation({
     mutationFn: async (newProfile: UserProfile) => {
       await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(newProfile));
+      try {
+        await profileApi.update(newProfile);
+        console.log('[UserContext] Profile synced to API');
+      } catch (e) {
+        console.log('[UserContext] Profile API sync failed (saved locally):', e);
+      }
       return newProfile;
     },
     onSuccess: (data) => {
@@ -152,6 +213,12 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const saveStreakMutation = useMutation({
     mutationFn: async (data: StreakData) => {
       await AsyncStorage.setItem(STREAK_KEY, JSON.stringify(data));
+      try {
+        await streakApi.update(data);
+        console.log('[UserContext] Streak synced to API');
+      } catch (e) {
+        console.log('[UserContext] Streak API sync failed:', e);
+      }
       return data;
     },
     onSuccess: (data) => {
@@ -168,6 +235,16 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const addMeal = useCallback((entry: MealEntry) => {
     const updated = [...meals, entry];
     saveMealsMutation.mutate(updated);
+
+    try {
+      mealsApi.add(entry).then(() => {
+        console.log('[UserContext] Meal synced to API');
+      }).catch((e) => {
+        console.log('[UserContext] Meal API sync failed:', e);
+      });
+    } catch (e) {
+      console.log('[UserContext] Meal API call error:', e);
+    }
 
     const today = getTodayDateString();
     const yesterday = (() => {
@@ -192,6 +269,11 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const removeMeal = useCallback((id: string) => {
     const updated = meals.filter(m => m.id !== id);
     saveMealsMutation.mutate(updated);
+    try {
+      mealsApi.remove(id).catch((e) => console.log('[UserContext] Meal delete API failed:', e));
+    } catch (e) {
+      console.log('[UserContext] Meal delete error:', e);
+    }
   }, [meals, saveMealsMutation]);
 
   const addWeightEntry = useCallback((weight: number) => {
@@ -200,12 +282,22 @@ export const [UserProvider, useUser] = createContextHook(() => {
     const updated = [...existing, { date: today, weight }];
     updated.sort((a, b) => a.date.localeCompare(b.date));
     saveWeightMutation.mutate(updated);
+    try {
+      weightApi.add(today, weight).catch((e) => console.log('[UserContext] Weight API sync failed:', e));
+    } catch (e) {
+      console.log('[UserContext] Weight API error:', e);
+    }
   }, [weightHistory, saveWeightMutation]);
 
   const unlockAchievement = useCallback((id: AchievementId) => {
     if (achievements.some(a => a.id === id)) return false;
     const updated = [...achievements, { id, unlockedAt: Date.now() }];
     saveAchievementsMutation.mutate(updated);
+    try {
+      achievementsApi.unlock(id).catch((e) => console.log('[UserContext] Achievement API sync failed:', e));
+    } catch (e) {
+      console.log('[UserContext] Achievement API error:', e);
+    }
     return true;
   }, [achievements, saveAchievementsMutation]);
 
@@ -223,12 +315,22 @@ export const [UserProvider, useUser] = createContextHook(() => {
     };
     const updated = [...progressPhotos, photo];
     savePhotosMutation.mutate(updated);
+    try {
+      photosApi.add(photo).catch((e) => console.log('[UserContext] Photo API sync failed:', e));
+    } catch (e) {
+      console.log('[UserContext] Photo API error:', e);
+    }
     return photo;
   }, [progressPhotos, savePhotosMutation]);
 
   const removeProgressPhoto = useCallback((id: string) => {
     const updated = progressPhotos.filter(p => p.id !== id);
     savePhotosMutation.mutate(updated);
+    try {
+      photosApi.remove(id).catch((e) => console.log('[UserContext] Photo delete API failed:', e));
+    } catch (e) {
+      console.log('[UserContext] Photo delete error:', e);
+    }
   }, [progressPhotos, savePhotosMutation]);
 
   const dailyTargets: DailyTargets = useMemo(() => {
