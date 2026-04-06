@@ -18,36 +18,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { ArrowRight, ArrowLeft, ChevronRight, ChevronDown, Check, Search, X } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserProfile } from '@/types';
 import { COUNTRY_CODES, DEFAULT_COUNTRY, CountryCode } from '@/constants/countries';
 
 type LoginMethod = 'email' | 'phone';
 type Step = 'input' | 'otp';
 
-const PROFILE_KEY = 'nutriuz_profile';
-const ACCOUNTS_KEY = 'nutriuz_accounts';
 const OTP_LENGTH = 6;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-interface StoredAccount {
-  identifier: string;
-  method: LoginMethod;
-  profileData: UserProfile;
-  createdAt: number;
-}
-
-function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
 
 export default function LoginScreen() {
   const { colors } = useTheme();
   const { tr } = useLanguage();
-  const { login } = useAuth();
+  const { sendCode: apiSendCode, verifyCode: apiVerifyCode } = useAuth();
   const [activeTab, setActiveTab] = useState<LoginMethod>('phone');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -56,7 +41,6 @@ export default function LoginScreen() {
   const [countrySearch, setCountrySearch] = useState('');
   const [step, setStep] = useState<Step>('input');
   const [_otpCode, setOtpCode] = useState('');
-  const [generatedOTP, setGeneratedOTP] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
@@ -175,10 +159,8 @@ export default function LoginScreen() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      const otp = generateOTP();
-      setGeneratedOTP(otp);
-      console.log('[Login] OTP generated for', identifier, ':', otp);
+      await apiSendCode(activeTab, identifier);
+      console.log('[Login] Code sent to', identifier);
 
       setStep('otp');
       setResendTimer(60);
@@ -189,13 +171,14 @@ export default function LoginScreen() {
       setTimeout(() => {
         otpInputRefs.current[0]?.focus();
       }, 500);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[Login] Send code error:', err);
-      setError(tr('common', 'error'));
+      const errMsg = err instanceof Error ? err.message : tr('common', 'error');
+      setError(errMsg);
     } finally {
       setIsLoading(false);
     }
-  }, [activeTab, email, phone, tr, shakeInput, animateToOTP, getFullPhoneNumber]);
+  }, [activeTab, email, phone, tr, shakeInput, animateToOTP, getFullPhoneNumber, apiSendCode]);
 
   const handleOTPChange = useCallback((text: string, index: number) => {
     const newDigits = [...otpDigits];
@@ -240,54 +223,41 @@ export default function LoginScreen() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
-      if (code !== generatedOTP) {
-        setError(tr('login', 'invalidCode'));
-        shakeInput();
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        setIsLoading(false);
-        return;
-      }
+      const identifier = activeTab === 'email' ? email.trim() : getFullPhoneNumber();
+      const result = await apiVerifyCode(activeTab, identifier, code);
 
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSuccessAnim(true);
       Animated.spring(successScale, { toValue: 1, friction: 4, tension: 80, useNativeDriver: true }).start();
 
-      const identifier = activeTab === 'email' ? email.trim() : getFullPhoneNumber();
-      const accountsRaw = await AsyncStorage.getItem(ACCOUNTS_KEY);
-      const accounts: StoredAccount[] = accountsRaw ? JSON.parse(accountsRaw) : [];
-      const existingAccount = accounts.find((a) => a.identifier === identifier && a.method === activeTab);
-
       await new Promise((resolve) => setTimeout(resolve, 600));
 
-      if (existingAccount) {
-        console.log('[Login] Existing account found:', identifier);
-        await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(existingAccount.profileData));
-        login(activeTab, identifier);
-        router.replace('/(tabs)/(home)');
-      } else {
-        console.log('[Login] New account, going to onboarding:', identifier);
-        login(activeTab, identifier);
+      if (result.isNewUser || !result.profile?.onboardingComplete) {
+        console.log('[Login] New user, going to onboarding:', identifier);
         router.replace('/onboarding');
+      } else {
+        console.log('[Login] Existing account found:', identifier);
+        router.replace('/(tabs)/(home)');
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[Login] Verify error:', err);
-      setError(tr('common', 'error'));
+      const errMsg = err instanceof Error ? err.message : tr('login', 'invalidCode');
+      setError(errMsg);
+      shakeInput();
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setIsLoading(false);
     }
-  }, [otpDigits, generatedOTP, activeTab, email, tr, shakeInput, login, successScale, getFullPhoneNumber]);
+  }, [otpDigits, activeTab, email, tr, shakeInput, successScale, getFullPhoneNumber, apiVerifyCode]);
 
   const handleResendCode = useCallback(async () => {
     if (resendTimer > 0) return;
     setIsLoading(true);
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      const otp = generateOTP();
-      setGeneratedOTP(otp);
-      console.log('[Login] OTP resent:', otp);
+      const identifier = activeTab === 'email' ? email.trim() : getFullPhoneNumber();
+      await apiSendCode(activeTab, identifier);
+      console.log('[Login] Code resent to:', identifier);
       setResendTimer(60);
       setOtpDigits(Array(OTP_LENGTH).fill(''));
       setOtpCode('');
@@ -298,7 +268,7 @@ export default function LoginScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [resendTimer]);
+  }, [resendTimer, activeTab, email, getFullPhoneNumber, apiSendCode]);
 
   const handleGoBack = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -853,8 +823,6 @@ export default function LoginScreen() {
         </Animated.View>
 
         {error ? <Text style={[ds.errorText, { textAlign: 'center' as const }]}>{error}</Text> : null}
-
-        <Text style={ds.otpHint}>OTP: {generatedOTP}</Text>
 
         <View style={ds.resendRow}>
           <TouchableOpacity

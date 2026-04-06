@@ -14,7 +14,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight, ChevronLeft, User, Target, Zap, Sparkles, Heart, TrendingUp, TrendingDown, Minus, Ruler, Scale, Clock, Crosshair } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/contexts/UserContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -93,31 +92,7 @@ export default function OnboardingScreen() {
       phone: auth.loginMethod === 'phone' ? auth.identifier : undefined,
     };
     updateProfile(profileData);
-
-    try {
-      const ACCOUNTS_KEY = 'nutriuz_accounts';
-      const accountsRaw = await AsyncStorage.getItem(ACCOUNTS_KEY);
-      const accounts = accountsRaw ? JSON.parse(accountsRaw) : [];
-      const existing = accounts.findIndex(
-        (a: { identifier: string; method: string }) => a.identifier === auth.identifier && a.method === auth.loginMethod
-      );
-      const accountEntry = {
-        identifier: auth.identifier,
-        method: auth.loginMethod,
-        profileData,
-        createdAt: Date.now(),
-      };
-      if (existing >= 0) {
-        accounts[existing] = accountEntry;
-      } else {
-        accounts.push(accountEntry);
-      }
-      await AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
-      console.log('[Onboarding] Account saved:', auth.identifier);
-    } catch (err) {
-      console.error('[Onboarding] Error saving account:', err);
-    }
-
+    console.log('[Onboarding] Profile saved via API for:', auth.identifier);
     router.replace('/(tabs)/(home)');
   };
 

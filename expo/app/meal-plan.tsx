@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/contexts/UserContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { mealPlanApi } from '@/utils/api';
 
 const MEAL_PLAN_CACHE_KEY = 'nutriuz_meal_plan';
 
@@ -62,6 +63,15 @@ export default function MealPlanScreen() {
   const cachedPlanQuery = useQuery({
     queryKey: ['mealPlanCache'],
     queryFn: async () => {
+      try {
+        const apiPlan = await mealPlanApi.get();
+        if (apiPlan) {
+          await AsyncStorage.setItem(MEAL_PLAN_CACHE_KEY, JSON.stringify(apiPlan));
+          return apiPlan as z.infer<typeof weeklyPlanSchema>;
+        }
+      } catch (e) {
+        console.log('[MealPlan] API fetch failed, using local:', e);
+      }
       const stored = await AsyncStorage.getItem(MEAL_PLAN_CACHE_KEY);
       if (stored) {
         try {
@@ -95,6 +105,11 @@ Har bir kunning jami kaloriyasi ${dailyTargets.calories} kkal atrofida bo'lsin.`
       });
 
       await AsyncStorage.setItem(MEAL_PLAN_CACHE_KEY, JSON.stringify(result));
+      try {
+        await mealPlanApi.save(result);
+      } catch (e) {
+        console.log('[MealPlan] API save failed:', e);
+      }
       void queryClient.invalidateQueries({ queryKey: ['mealPlanCache'] });
 
       unlockAchievement('meal_plan_first');
