@@ -10,7 +10,7 @@ import {
 
 const API_TOKEN_KEY = 'nutriuz_api_token';
 const API_USER_ID_KEY = 'nutriuz_api_user_id';
-const API_SECRET_KEY = 'your-secret-key-change-this-in-production';
+const API_SECRET_KEY = 'hdiuasd76887';
 
 let BASE_URL = 'https://68bafc6d1e302.myxvest1.ru/Fitnes/api';
 
