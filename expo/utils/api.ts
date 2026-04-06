@@ -64,7 +64,7 @@ interface UserSettings {
   language: string;
 }
 
-async function getToken(): Promise<string | null> {
+export async function getToken(): Promise<string | null> {
   return AsyncStorage.getItem(API_TOKEN_KEY);
 }
 

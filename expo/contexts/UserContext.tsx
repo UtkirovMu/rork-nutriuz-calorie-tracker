@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
 import { UserProfile, DailyTargets, MealEntry, MealType, WeightEntry, UnlockedAchievement, AchievementId, ProgressPhoto } from '@/types';
 import { calculateDailyTargets, getTodayDateString } from '@/utils/calculations';
-import { profileApi, mealsApi, weightApi, achievementsApi, photosApi, streakApi } from '@/utils/api';
+import { profileApi, mealsApi, weightApi, achievementsApi, photosApi, streakApi, getToken } from '@/utils/api';
 
 const PROFILE_KEY = 'nutriuz_profile';
 const MEALS_KEY = 'nutriuz_meals';
@@ -67,35 +67,49 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const [achievements, setAchievements] = useState<UnlockedAchievement[]>([]);
   const [progressPhotos, setProgressPhotos] = useState<ProgressPhoto[]>([]);
   const [streak, setStreak] = useState<StreakData>({ currentStreak: 0, lastLogDate: '', longestStreak: 0 });
+  const [hasToken, setHasToken] = useState<boolean>(false);
+
+  useEffect(() => {
+    void getToken().then((token: string | null) => {
+      setHasToken(!!token);
+      console.log('[UserContext] Token mavjud:', !!token);
+    });
+  }, []);
 
   const profileQuery = useQuery({
     queryKey: ['profile'],
     queryFn: () => fetchWithFallback(profileApi.get, PROFILE_KEY, defaultProfile),
+    enabled: hasToken,
   });
 
   const mealsQuery = useQuery({
     queryKey: ['meals'],
     queryFn: () => fetchWithFallback(mealsApi.getAll, MEALS_KEY, [] as MealEntry[]),
+    enabled: hasToken,
   });
 
   const weightQuery = useQuery({
     queryKey: ['weightHistory'],
     queryFn: () => fetchWithFallback(weightApi.getAll, WEIGHT_KEY, [] as WeightEntry[]),
+    enabled: hasToken,
   });
 
   const achievementsQuery = useQuery({
     queryKey: ['achievements'],
     queryFn: () => fetchWithFallback(achievementsApi.getAll, ACHIEVEMENTS_KEY, [] as UnlockedAchievement[]),
+    enabled: hasToken,
   });
 
   const photosQuery = useQuery({
     queryKey: ['progressPhotos'],
     queryFn: () => fetchWithFallback(photosApi.getAll, PHOTOS_KEY, [] as ProgressPhoto[]),
+    enabled: hasToken,
   });
 
   const streakQuery = useQuery({
     queryKey: ['streak'],
     queryFn: () => fetchWithFallback(streakApi.get, STREAK_KEY, { currentStreak: 0, lastLogDate: '', longestStreak: 0 }),
+    enabled: hasToken,
   });
 
   useEffect(() => { if (profileQuery.data) setProfile(profileQuery.data); }, [profileQuery.data]);
