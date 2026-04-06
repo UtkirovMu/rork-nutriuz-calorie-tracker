@@ -5,6 +5,7 @@ import createContextHook from '@nkzw/create-context-hook';
 import { UserProfile, DailyTargets, MealEntry, MealType, WeightEntry, UnlockedAchievement, AchievementId, ProgressPhoto } from '@/types';
 import { calculateDailyTargets, getTodayDateString } from '@/utils/calculations';
 import { profileApi, mealsApi, weightApi, achievementsApi, photosApi, streakApi } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 const PROFILE_KEY = 'nutriuz_profile';
 const MEALS_KEY = 'nutriuz_meals';
@@ -50,6 +51,8 @@ async function saveLocal(key: string, data: unknown): Promise<void> {
 
 export const [UserProvider, useUser] = createContextHook(() => {
   const queryClient = useQueryClient();
+  const { auth } = useAuth();
+  const isAuthenticated = auth.isLoggedIn;
   const [profile, setProfile] = useState<UserProfile>(defaultProfile);
   const [meals, setMeals] = useState<MealEntry[]>([]);
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
@@ -69,6 +72,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
         return loadLocal<UserProfile>(PROFILE_KEY, defaultProfile);
       }
     },
+    enabled: isAuthenticated,
   });
 
   const mealsQuery = useQuery({
@@ -83,6 +87,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
         return loadLocal<MealEntry[]>(MEALS_KEY, []);
       }
     },
+    enabled: isAuthenticated,
   });
 
   const weightQuery = useQuery({
@@ -97,6 +102,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
         return loadLocal<WeightEntry[]>(WEIGHT_KEY, []);
       }
     },
+    enabled: isAuthenticated,
   });
 
   const achievementsQuery = useQuery({
@@ -111,6 +117,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
         return loadLocal<UnlockedAchievement[]>(ACHIEVEMENTS_KEY, []);
       }
     },
+    enabled: isAuthenticated,
   });
 
   const photosQuery = useQuery({
@@ -125,6 +132,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
         return loadLocal<ProgressPhoto[]>(PHOTOS_KEY, []);
       }
     },
+    enabled: isAuthenticated,
   });
 
   const streakQuery = useQuery({
@@ -139,6 +147,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
         return loadLocal<StreakData>(STREAK_KEY, { currentStreak: 0, lastLogDate: '', longestStreak: 0 });
       }
     },
+    enabled: isAuthenticated,
   });
 
   useEffect(() => { if (profileQuery.data) setProfile(profileQuery.data); }, [profileQuery.data]);

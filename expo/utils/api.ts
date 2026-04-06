@@ -47,9 +47,11 @@ async function apiRequest<T>(
 
   if (requireAuth) {
     const token = await getToken();
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    if (!token) {
+      console.log('[API] No token found, skipping auth request to', endpoint);
+      throw new Error('NOT_AUTHENTICATED');
     }
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const config: RequestInit = {
