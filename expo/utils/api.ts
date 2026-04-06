@@ -28,6 +28,14 @@ export async function clearToken(): Promise<void> {
   await AsyncStorage.removeItem(TOKEN_KEY);
 }
 
+const REQUEST_TIMEOUT = 15000;
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 1000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function request<T>(
   endpoint: string,
   options: {
@@ -47,6 +55,7 @@ async function request<T>(
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   };
 
   if (requiresAuth) {
@@ -56,23 +65,68 @@ async function request<T>(
     }
   }
 
-  const config: RequestInit = { method, headers };
-  if (body && method !== 'GET') {
-    config.body = JSON.stringify(body);
+  const bodyString = body && method !== 'GET' ? JSON.stringify(body) : undefined;
+
+  console.log(`[API] ${method} ${url}`, bodyString ? bodyString.slice(0, 200) : '');
+
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      console.log(`[API] Retry attempt ${attempt}/${MAX_RETRIES} for ${method} ${endpoint}`);
+      await delay(RETRY_DELAY * attempt);
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+
+      const config: RequestInit = {
+        method,
+        headers,
+        signal: controller.signal,
+        mode: 'cors' as RequestMode,
+      };
+      if (bodyString) {
+        config.body = bodyString;
+      }
+
+      const response = await fetch(url, config);
+      clearTimeout(timeoutId);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error(`[API] Error ${response.status}:`, data);
+        throw new ApiError(data?.error || 'Xatolik yuz berdi', response.status);
+      }
+
+      console.log(`[API] ${method} ${endpoint} -> OK`);
+      return data as T;
+    } catch (err: unknown) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+
+      if (err instanceof ApiError) {
+        throw err;
+      }
+
+      if (lastError.name === 'AbortError') {
+        console.error(`[API] Request timeout for ${method} ${endpoint}`);
+        lastError = new Error('So\'rov vaqti tugadi. Internet aloqangizni tekshiring.');
+      } else {
+        console.error(`[API] Network error for ${method} ${endpoint}:`, lastError.message);
+      }
+
+      if (attempt === MAX_RETRIES) {
+        break;
+      }
+    }
   }
 
-  console.log(`[API] ${method} ${endpoint}`, body ? JSON.stringify(body).slice(0, 200) : '');
-
-  const response = await fetch(url, config);
-  const data = await response.json();
-
-  if (!response.ok) {
-    console.error(`[API] Error ${response.status}:`, data);
-    throw new ApiError(data?.error || 'Xatolik yuz berdi', response.status);
-  }
-
-  console.log(`[API] ${method} ${endpoint} -> OK`);
-  return data as T;
+  throw new ApiError(
+    lastError?.message || 'Serverga ulanib bo\'lmadi. Internet aloqangizni tekshiring.',
+    0
+  );
 }
 
 export class ApiError extends Error {
