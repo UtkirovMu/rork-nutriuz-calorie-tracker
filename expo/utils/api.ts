@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   UserProfile,
@@ -91,30 +92,50 @@ export async function clearAuthData(): Promise<void> {
 
 async function request<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  retries: number = 2
 ): Promise<ApiResponse<T>> {
   const token = await getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
-    'X-API-Key': API_SECRET_KEY,
     ...(options.headers as Record<string, string>),
   };
+
+  if (Platform.OS !== 'web') {
+    headers['X-API-Key'] = API_SECRET_KEY;
+  }
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const url = `${BASE_URL}${endpoint}`;
+  const separator = endpoint.includes('?') ? '&' : '?';
+  const apiKeyParam = Platform.OS === 'web' ? `${separator}api_key=${API_SECRET_KEY}` : '';
+  const url = `${BASE_URL}${endpoint}${apiKeyParam}`;
   console.log(`[API] ${options.method || 'GET'} ${url}`);
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     const response = await fetch(url, {
       ...options,
       headers,
+      signal: controller.signal,
     });
 
-    const json = (await response.json()) as ApiResponse<T>;
+    clearTimeout(timeoutId);
+
+    const text = await response.text();
+    let json: ApiResponse<T>;
+    try {
+      json = JSON.parse(text) as ApiResponse<T>;
+    } catch {
+      console.error(`[API] Invalid JSON response:`, text.slice(0, 300));
+      throw new Error(`Server returned invalid response`);
+    }
+
     console.log(`[API] Response ${response.status}:`, JSON.stringify(json).slice(0, 200));
 
     if (!response.ok) {
@@ -122,7 +143,17 @@ async function request<T>(
     }
 
     return json;
-  } catch (error) {
+  } catch (error: unknown) {
+    const isNetworkError =
+      error instanceof TypeError && (error.message === 'Failed to fetch' || error.message === 'Network request failed');
+    const isAbortError = error instanceof DOMException && error.name === 'AbortError';
+
+    if ((isNetworkError || isAbortError) && retries > 0) {
+      console.log(`[API] Retrying... (${retries} left)`);
+      await new Promise((r) => setTimeout(r, 1000));
+      return request<T>(endpoint, options, retries - 1);
+    }
+
     console.error(`[API] Error:`, error);
     throw error;
   }
