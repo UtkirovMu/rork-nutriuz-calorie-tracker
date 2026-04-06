@@ -11,12 +11,7 @@ import {
 const API_TOKEN_KEY = 'nutriuz_api_token';
 const API_USER_ID_KEY = 'nutriuz_api_user_id';
 const API_SECRET_KEY = 'hdiuasd76887';
-
-let BASE_URL = 'https://68bafc6d1e302.myxvest1.ru/Fitnes/api';
-
-export function setApiBaseUrl(url: string) {
-  BASE_URL = url;
-}
+const BASE_URL = 'https://68bafc6d1e302.myxvest1.ru/Fitnes/api';
 
 interface ApiResponse<T = unknown> {
   success: boolean;
@@ -27,6 +22,7 @@ interface ApiResponse<T = unknown> {
 
 interface LoginResponse {
   otp_sent: boolean;
+  debug_code?: string;
   message: string;
 }
 
@@ -92,16 +88,15 @@ export async function clearAuthData(): Promise<void> {
 async function request<T>(
   endpoint: string,
   options: RequestInit = {},
-  retries: number = 3
+  retries: number = 2
 ): Promise<ApiResponse<T>> {
   const token = await getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    Accept: 'application/json',
+    'Accept': 'application/json',
+    'X-API-Key': API_SECRET_KEY,
     ...(options.headers as Record<string, string>),
   };
-
-  headers['X-API-Key'] = API_SECRET_KEY;
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -112,30 +107,27 @@ async function request<T>(
   console.log(`[API] ${options.method || 'GET'} ${url}`);
 
   try {
-    const fetchPromise = fetch(url, {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    const response = await fetch(url, {
       ...options,
       headers,
-      mode: 'cors' as RequestMode,
+      signal: controller.signal,
     });
 
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Request timeout')), 30000);
-    });
-
-    const response = await Promise.race([fetchPromise, timeoutPromise]);
+    clearTimeout(timeoutId);
 
     const text = await response.text();
-    console.log(`[API] Raw response (${response.status}):`, text.slice(0, 300));
+    console.log(`[API] Response (${response.status}):`, text.slice(0, 300));
 
     let json: ApiResponse<T>;
     try {
       json = JSON.parse(text) as ApiResponse<T>;
     } catch {
-      console.error(`[API] Invalid JSON response:`, text.slice(0, 300));
-      throw new Error(`Server returned invalid response: ${text.slice(0, 100)}`);
+      console.error(`[API] Invalid JSON:`, text.slice(0, 200));
+      throw new Error(`Server xatolik: ${text.slice(0, 100)}`);
     }
-
-    console.log(`[API] Response ${response.status}:`, JSON.stringify(json).slice(0, 200));
 
     if (!response.ok) {
       throw new Error(json.error || json.message || `HTTP ${response.status}`);
@@ -145,22 +137,19 @@ async function request<T>(
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
     const isRetryable =
-      errMsg === 'Failed to fetch' ||
-      errMsg === 'Network request failed' ||
-      errMsg === 'Request timeout' ||
+      errMsg.includes('Failed to fetch') ||
+      errMsg.includes('Network request failed') ||
       errMsg.includes('AbortError') ||
-      errMsg.includes('aborted') ||
-      errMsg.includes('network') ||
-      errMsg.includes('CORS');
+      errMsg.includes('aborted');
 
     if (isRetryable && retries > 0) {
-      const delay = (4 - retries) * 1500;
-      console.log(`[API] Retrying in ${delay}ms... (${retries} left) Error: ${errMsg}`);
+      const delay = (3 - retries) * 2000;
+      console.log(`[API] Qayta urinish ${delay}ms... (${retries} qoldi)`);
       await new Promise((r) => setTimeout(r, delay));
       return request<T>(endpoint, options, retries - 1);
     }
 
-    console.error(`[API] Error:`, errMsg);
+    console.error(`[API] Xatolik:`, errMsg);
     throw error;
   }
 }
