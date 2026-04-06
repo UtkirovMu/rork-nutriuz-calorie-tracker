@@ -105,6 +105,7 @@ async function request<T>(
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+    headers['X-Token'] = token;
   }
 
   const url = `${BASE_URL}${endpoint}`;
