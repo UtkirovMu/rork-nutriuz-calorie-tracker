@@ -11,7 +11,7 @@ import {
 const API_TOKEN_KEY = 'nutriuz_api_token';
 const API_USER_ID_KEY = 'nutriuz_api_user_id';
 
-let BASE_URL = 'https://your-domain.com/api';
+let BASE_URL = 'https://68bafc6d1e302.myxvest1.ru/Fitnes/api';
 
 export function setApiBaseUrl(url: string) {
   BASE_URL = url;
