@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -68,11 +69,19 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       return null;
     }
 
-    const projectId = process.env.EXPO_PUBLIC_PROJECT_ID;
+    const easProjectId = Constants.expoConfig?.extra?.eas?.projectId;
+    const envProjectId = process.env.EXPO_PUBLIC_PROJECT_ID;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const projectId = easProjectId || (envProjectId && uuidRegex.test(envProjectId) ? envProjectId : undefined);
     console.log('[Notifications] Getting push token with projectId:', projectId);
 
+    if (!projectId) {
+      console.log('[Notifications] No valid projectId found, skipping push token registration');
+      return null;
+    }
+
     const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: projectId || undefined,
+      projectId,
     });
 
     const token = tokenData.data;
