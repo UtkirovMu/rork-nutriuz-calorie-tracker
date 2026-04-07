@@ -1,17 +1,16 @@
 export interface ThemeColors {
   primary: string;
   primaryLight: string;
+  primaryDark: string;
+
   background: string;
   surface: string;
   surfaceSecondary: string;
-  card: string;
+
   text: string;
   textSecondary: string;
   textTertiary: string;
-  border: string;
-  borderLight: string;
-  black: string;
-  white: string;
+
   calories: string;
   caloriesLight: string;
   protein: string;
@@ -20,58 +19,102 @@ export interface ThemeColors {
   carbsLight: string;
   fats: string;
   fatsLight: string;
+
+  border: string;
+  borderLight: string;
+
   danger: string;
+  warning: string;
+
+  shadow: string;
+  overlay: string;
+
+  white: string;
+  black: string;
+
+  tabIconDefault: string;
+  tabIconSelected: string;
 }
 
-const Colors: { light: ThemeColors; dark: ThemeColors } = {
-  light: {
-    primary: '#10B981',
-    primaryLight: '#D1FAE5',
-    background: '#F8FAFB',
-    surface: '#FFFFFF',
-    surfaceSecondary: '#F1F5F9',
-    card: '#FFFFFF',
-    text: '#0F172A',
-    textSecondary: '#64748B',
-    textTertiary: '#94A3B8',
-    border: '#E2E8F0',
-    borderLight: '#F1F5F9',
-    black: '#000000',
-    white: '#FFFFFF',
-    calories: '#F59E0B',
-    caloriesLight: '#FEF3C7',
-    protein: '#EF4444',
-    proteinLight: '#FEE2E2',
-    carbs: '#3B82F6',
-    carbsLight: '#DBEAFE',
-    fats: '#8B5CF6',
-    fatsLight: '#EDE9FE',
-    danger: '#EF4444',
-  },
-  dark: {
-    primary: '#34D399',
-    primaryLight: '#064E3B',
-    background: '#0F172A',
-    surface: '#1E293B',
-    surfaceSecondary: '#334155',
-    card: '#1E293B',
-    text: '#F1F5F9',
-    textSecondary: '#94A3B8',
-    textTertiary: '#64748B',
-    border: '#334155',
-    borderLight: '#1E293B',
-    black: '#000000',
-    white: '#FFFFFF',
-    calories: '#FBBF24',
-    caloriesLight: '#78350F',
-    protein: '#F87171',
-    proteinLight: '#7F1D1D',
-    carbs: '#60A5FA',
-    carbsLight: '#1E3A5F',
-    fats: '#A78BFA',
-    fatsLight: '#4C1D95',
-    danger: '#F87171',
-  },
+const lightColors: ThemeColors = {
+  primary: '#0B8F6C',
+  primaryLight: '#E8F5F0',
+  primaryDark: '#067A5B',
+
+  background: '#F5F5F7',
+  surface: '#FFFFFF',
+  surfaceSecondary: '#F0F0F2',
+
+  text: '#1D1D1F',
+  textSecondary: '#6E6E73',
+  textTertiary: '#AEAEB2',
+
+  calories: '#34C759',
+  caloriesLight: '#E8FAF0',
+  protein: '#FF6B6B',
+  proteinLight: '#FFF0F0',
+  carbs: '#F5A623',
+  carbsLight: '#FFF8EC',
+  fats: '#5AC8FA',
+  fatsLight: '#EDF8FF',
+
+  border: '#E5E5EA',
+  borderLight: '#F2F2F7',
+
+  danger: '#FF3B30',
+  warning: '#FF9500',
+
+  shadow: 'rgba(0, 0, 0, 0.06)',
+  overlay: 'rgba(0, 0, 0, 0.4)',
+
+  white: '#FFFFFF',
+  black: '#000000',
+
+  tabIconDefault: '#AEAEB2',
+  tabIconSelected: '#0B8F6C',
+};
+
+const darkColors: ThemeColors = {
+  primary: '#2ECB96',
+  primaryLight: '#1A3D33',
+  primaryDark: '#25B882',
+
+  background: '#0E0E10',
+  surface: '#1C1C1E',
+  surfaceSecondary: '#2C2C2E',
+
+  text: '#F5F5F7',
+  textSecondary: '#A1A1A6',
+  textTertiary: '#636366',
+
+  calories: '#30D158',
+  caloriesLight: '#1A3326',
+  protein: '#FF6B6B',
+  proteinLight: '#3D1F1F',
+  carbs: '#FFD60A',
+  carbsLight: '#3D3517',
+  fats: '#64D2FF',
+  fatsLight: '#1A2F3D',
+
+  border: '#38383A',
+  borderLight: '#2C2C2E',
+
+  danger: '#FF453A',
+  warning: '#FF9F0A',
+
+  shadow: 'rgba(0, 0, 0, 0.3)',
+  overlay: 'rgba(0, 0, 0, 0.6)',
+
+  white: '#FFFFFF',
+  black: '#000000',
+
+  tabIconDefault: '#636366',
+  tabIconSelected: '#2ECB96',
+};
+
+const Colors = {
+  light: lightColors,
+  dark: darkColors,
 };
 
 export default Colors;
