@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Camera, Plus, Flame, TrendingUp, Utensils, Trophy, CameraIcon, BarChart3, Sparkles } from 'lucide-react-native';
+import { Camera, Plus, Flame, TrendingUp, BarChart3, Sparkles, ScanLine, MessageCircle, Heart } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { generateObject } from '@rork-ai/toolkit-sdk';
@@ -173,10 +174,10 @@ Qisqa va aniq javob ber o'zbek tilida.
   }), [tr]);
 
   const quickLinks = useMemo(() => [
-    { label: tr('home', 'mealPlan'), icon: Utensils, color: '#FF9500', bg: '#FF9500' + '15', route: '/meal-plan' },
-    { label: tr('home', 'achievements'), icon: Trophy, color: '#FFD60A', bg: '#FFD60A' + '15', route: '/achievements' },
-    { label: tr('home', 'photos'), icon: CameraIcon, color: '#5856D6', bg: '#5856D6' + '15', route: '/progress-photos' },
-    { label: tr('home', 'statistics'), icon: BarChart3, color: '#636366', bg: '#636366' + '15', route: '/(tabs)/stats' },
+    { label: tr('home', 'aiScanner'), icon: ScanLine, gradient: ['#FF6B6B', '#EE5A24'] as const, shadowColor: '#EE5A24', route: '/scanner' },
+    { label: tr('home', 'statistics'), icon: BarChart3, gradient: ['#4ECDC4', '#2ECC71'] as const, shadowColor: '#2ECC71', route: '/(tabs)/stats' },
+    { label: tr('home', 'aiAdvice'), icon: MessageCircle, gradient: ['#A18CD1', '#5C6BC0'] as const, shadowColor: '#5C6BC0', route: '/(tabs)/chat' },
+    { label: tr('home', 'healthyLife'), icon: Heart, gradient: ['#FF9A76', '#F857A6'] as const, shadowColor: '#F857A6', route: '/meal-plan' },
   ], [tr]);
 
   const dynamicStyles = useMemo(() => StyleSheet.create({
@@ -205,13 +206,13 @@ Qisqa va aniq javob ber o'zbek tilida.
     quickStatCard: { flex: 1, backgroundColor: colors.surfaceSecondary, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 12, alignItems: 'center' as const },
     quickStatValue: { fontSize: 18, fontWeight: '700' as const, color: colors.text },
     quickStatLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '500' as const, marginTop: 2 },
-    quickLinksRow: { flexDirection: 'row' as const, gap: 10, marginBottom: 20 },
+    quickLinksRow: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 12, marginBottom: 20 },
     quickLinkCard: {
-      flex: 1, backgroundColor: colors.surface, borderRadius: 18, paddingVertical: 14, alignItems: 'center' as const, gap: 8,
-      shadowColor: colors.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
+      width: '47%' as unknown as number, backgroundColor: colors.surface, borderRadius: 20, paddingVertical: 18, paddingHorizontal: 14, gap: 10,
+      shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 4,
     },
-    quickLinkIconWrap: { width: 40, height: 40, borderRadius: 14, alignItems: 'center' as const, justifyContent: 'center' as const },
-    quickLinkText: { fontSize: 11, fontWeight: '600' as const, color: colors.textSecondary },
+    quickLinkIconWrap: { width: 46, height: 46, borderRadius: 15, alignItems: 'center' as const, justifyContent: 'center' as const, overflow: 'hidden' as const },
+    quickLinkText: { fontSize: 13, fontWeight: '700' as const, color: colors.text, letterSpacing: -0.2 },
     analysisCard: {
       backgroundColor: colors.surface, borderRadius: 22, padding: 18, marginBottom: 20,
       shadowColor: colors.black, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 2,
@@ -307,14 +308,16 @@ Qisqa va aniq javob ber o'zbek tilida.
                 const IconComp = link.icon;
                 return (
                   <TouchableOpacity
-                    key={link.route}
-                    style={dynamicStyles.quickLinkCard}
+                    key={link.route + i}
+                    style={[dynamicStyles.quickLinkCard, { shadowColor: link.shadowColor }]}
                     onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(link.route as never); }}
-                    activeOpacity={0.7}
+                    activeOpacity={0.75}
                     testID={`quick-link-${i}`}
                   >
-                    <View style={[dynamicStyles.quickLinkIconWrap, { backgroundColor: link.bg }]}>
-                      <IconComp size={20} color={link.color} />
+                    <View style={dynamicStyles.quickLinkIconWrap}>
+                      <LinearGradient colors={[...link.gradient]} style={styles.quickLinkGradient}>
+                        <IconComp size={22} color="#fff" />
+                      </LinearGradient>
                     </View>
                     <Text style={dynamicStyles.quickLinkText}>{link.label}</Text>
                   </TouchableOpacity>
@@ -440,5 +443,6 @@ const styles = StyleSheet.create({
   mealTypeGroup: { marginBottom: 14 },
   mealTypeHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
   mealTypeEmoji: { fontSize: 18 },
+  quickLinkGradient: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', borderRadius: 15 },
   bottomSpacer: { height: 20 },
 });
