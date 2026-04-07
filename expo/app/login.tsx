@@ -20,7 +20,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { ArrowLeft, ChevronRight, ChevronDown, Check, Search, X, Scan, BarChart3, Brain, Apple } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ArrowLeft, ChevronRight, ChevronDown, Check, Search, X, Scan, BarChart3, Brain, Apple, Phone, Mail, Shield } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,13 +31,13 @@ type LoginMethod = 'email' | 'phone';
 type Step = 'input' | 'otp';
 
 const OTP_LENGTH = 6;
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const CAROUSEL_SLIDES = [
   {
     icon: Scan,
-    color: '#34C759',
-    bg: '#34C759' + '18',
+    color: '#FFFFFF',
+    bg: 'rgba(255,255,255,0.15)',
     titleUz: 'AI Skaner',
     titleRu: 'AI Сканер',
     titleEn: 'AI Scanner',
@@ -46,8 +47,8 @@ const CAROUSEL_SLIDES = [
   },
   {
     icon: BarChart3,
-    color: '#FF9500',
-    bg: '#FF9500' + '18',
+    color: '#FFFFFF',
+    bg: 'rgba(255,255,255,0.15)',
     titleUz: 'Statistika',
     titleRu: 'Статистика',
     titleEn: 'Statistics',
@@ -57,8 +58,8 @@ const CAROUSEL_SLIDES = [
   },
   {
     icon: Brain,
-    color: '#AF52DE',
-    bg: '#AF52DE' + '18',
+    color: '#FFFFFF',
+    bg: 'rgba(255,255,255,0.15)',
     titleUz: 'AI Maslahatchi',
     titleRu: 'AI Консультант',
     titleEn: 'AI Advisor',
@@ -68,8 +69,8 @@ const CAROUSEL_SLIDES = [
   },
   {
     icon: Apple,
-    color: '#FF2D55',
-    bg: '#FF2D55' + '18',
+    color: '#FFFFFF',
+    bg: 'rgba(255,255,255,0.15)',
     titleUz: 'Ovqat rejasi',
     titleRu: 'План питания',
     titleEn: 'Meal Plan',
@@ -107,27 +108,41 @@ export default function LoginScreen() {
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideUp = useRef(new Animated.Value(40)).current;
+  const slideUp = useRef(new Animated.Value(60)).current;
   const otpFadeAnim = useRef(new Animated.Value(0)).current;
   const otpSlideAnim = useRef(new Animated.Value(30)).current;
   const inputFadeAnim = useRef(new Animated.Value(1)).current;
   const inputSlideAnim = useRef(new Animated.Value(0)).current;
   const successScale = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
+  const heroScale = useRef(new Animated.Value(0.9)).current;
+  const dotPulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 600, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.spring(slideUp, { toValue: 0, friction: 8, tension: 50, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 800, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.spring(slideUp, { toValue: 0, friction: 8, tension: 40, useNativeDriver: true }),
+      Animated.spring(heroScale, { toValue: 1, friction: 6, tension: 30, useNativeDriver: true }),
     ]).start();
-  }, [fadeAnim, slideUp]);
+  }, [fadeAnim, slideUp, heroScale]);
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(dotPulse, { toValue: 1.3, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(dotPulse, { toValue: 1, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [dotPulse]);
 
   useEffect(() => {
     if (step === 'input') {
       carouselTimer.current = setInterval(() => {
         setCarouselIndex((prev) => {
           const next = (prev + 1) % CAROUSEL_SLIDES.length;
-          carouselRef.current?.scrollTo({ x: next * (SCREEN_WIDTH - 56), animated: true });
+          carouselRef.current?.scrollTo({ x: next * (SCREEN_WIDTH - 80), animated: true });
           return next;
         });
       }, 3500);
@@ -373,7 +388,7 @@ export default function LoginScreen() {
   const currentIdentifier = activeTab === 'email' ? email.trim() : getFullPhoneNumber();
 
   const handleButtonPressIn = useCallback(() => {
-    Animated.spring(buttonScale, { toValue: 0.96, friction: 8, useNativeDriver: true }).start();
+    Animated.spring(buttonScale, { toValue: 0.95, friction: 8, useNativeDriver: true }).start();
   }, [buttonScale]);
 
   const handleButtonPressOut = useCallback(() => {
@@ -389,7 +404,7 @@ export default function LoginScreen() {
 
   const handleCarouselScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = e.nativeEvent.contentOffset.x;
-    const slideWidth = SCREEN_WIDTH - 56;
+    const slideWidth = SCREEN_WIDTH - 80;
     const index = Math.round(offsetX / slideWidth);
     setCarouselIndex(index);
   }, []);
@@ -439,456 +454,99 @@ export default function LoginScreen() {
     return colors.border;
   }, [otpSuccess, error, otpDigits, focusedOtpIndex, colors]);
 
-  const ds = useMemo(() => StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    safeArea: {
-      flex: 1,
-    },
-    topSection: {
-      paddingHorizontal: 28,
-      paddingTop: 20,
-    },
-    logoRow: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: 10,
-      marginBottom: 24,
-    },
-    logoMark: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
-      backgroundColor: colors.primary,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-    logoText: {
-      fontSize: 20,
-      fontWeight: '700' as const,
-      color: colors.text,
-      letterSpacing: -0.5,
-    },
-    carouselWrap: {
-      marginBottom: 24,
-    },
-    carouselSlide: {
-      width: SCREEN_WIDTH - 56,
-      paddingHorizontal: 4,
-    },
-    slideCard: {
-      backgroundColor: colors.surface,
-      borderRadius: 20,
-      padding: 24,
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: 16,
-      shadowColor: colors.black,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.06,
-      shadowRadius: 12,
-      elevation: 3,
-    },
-    slideIconWrap: {
-      width: 52,
-      height: 52,
-      borderRadius: 16,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-    slideTextWrap: {
-      flex: 1,
-    },
-    slideTitle: {
-      fontSize: 16,
-      fontWeight: '700' as const,
-      color: colors.text,
-      marginBottom: 4,
-    },
-    slideDesc: {
-      fontSize: 13,
-      color: colors.textSecondary,
-      lineHeight: 18,
-    },
-    dotsRow: {
-      flexDirection: 'row' as const,
-      justifyContent: 'center' as const,
-      gap: 6,
-      marginTop: 14,
-    },
-    dot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: colors.border,
-    },
-    dotActive: {
-      width: 20,
-      backgroundColor: colors.primary,
-    },
-    heroTitle: {
-      fontSize: 30,
-      fontWeight: '800' as const,
-      color: colors.text,
-      letterSpacing: -0.8,
-      lineHeight: 36,
-    },
-    heroSubtitle: {
-      fontSize: 15,
-      color: colors.textSecondary,
-      marginTop: 8,
-      lineHeight: 22,
-      marginBottom: 20,
-    },
-    formSection: {
-      paddingHorizontal: 28,
-      paddingBottom: Platform.OS === 'ios' ? 16 : 28,
-    },
-    tabRow: {
-      flexDirection: 'row' as const,
-      backgroundColor: colors.surfaceSecondary,
-      borderRadius: 12,
-      padding: 3,
-      marginBottom: 16,
-    },
-    tabButton: {
-      flex: 1,
-      paddingVertical: 10,
-      borderRadius: 10,
-      alignItems: 'center' as const,
-    },
-    tabButtonActive: {
-      backgroundColor: colors.surface,
-      shadowColor: colors.black,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.08,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    tabText: {
-      fontSize: 14,
-      fontWeight: '500' as const,
-      color: colors.textTertiary,
-    },
-    tabTextActive: {
-      color: colors.text,
-      fontWeight: '600' as const,
-    },
-    inputField: {
-      backgroundColor: colors.surface,
-      borderRadius: 14,
-      height: 54,
-      paddingHorizontal: 18,
-      fontSize: 17,
-      color: colors.text,
-      borderWidth: 1.5,
-      borderColor: colors.border,
-      marginBottom: 12,
-    },
-    inputFieldFocused: {
-      borderColor: colors.primary,
-    },
-    inputFieldError: {
-      borderColor: colors.danger,
-    },
-    errorText: {
-      fontSize: 13,
-      color: colors.danger,
-      marginBottom: 10,
-      marginLeft: 4,
-    },
-    mainButton: {
-      height: 54,
-      borderRadius: 14,
-      backgroundColor: colors.primary,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      flexDirection: 'row' as const,
-      gap: 8,
-    },
-    mainButtonDisabled: {
-      backgroundColor: colors.border,
-    },
-    mainButtonText: {
-      fontSize: 16,
-      fontWeight: '600' as const,
-      color: '#FFFFFF',
-    },
-    termsText: {
-      fontSize: 11,
-      color: colors.textTertiary,
-      textAlign: 'center' as const,
-      marginTop: 14,
-      lineHeight: 16,
-      paddingHorizontal: 16,
-    },
-    phoneInputRow: {
-      flexDirection: 'row' as const,
-      gap: 8,
-      marginBottom: 12,
-    },
-    countrySelector: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      backgroundColor: colors.surface,
-      borderRadius: 14,
-      height: 54,
-      paddingHorizontal: 12,
-      borderWidth: 1.5,
-      borderColor: colors.border,
-      gap: 4,
-    },
-    countrySelectorFocused: {
-      borderColor: colors.primary,
-    },
-    countryFlag: {
-      fontSize: 22,
-    },
-    countryDial: {
-      fontSize: 16,
-      fontWeight: '600' as const,
-      color: colors.text,
-    },
-    phoneInput: {
-      flex: 1,
-      backgroundColor: colors.surface,
-      borderRadius: 14,
-      height: 54,
-      paddingHorizontal: 16,
-      fontSize: 17,
-      color: colors.text,
-      borderWidth: 1.5,
-      borderColor: colors.border,
-    },
-    phoneInputFocused: {
-      borderColor: colors.primary,
-    },
-    phoneInputError: {
-      borderColor: colors.danger,
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      justifyContent: 'flex-end' as const,
-    },
-    modalContent: {
-      backgroundColor: colors.background,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      maxHeight: '80%' as const,
-      paddingTop: 12,
-    },
-    modalHandle: {
-      width: 40,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: colors.border,
-      alignSelf: 'center' as const,
-      marginBottom: 12,
-    },
-    modalHeader: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'space-between' as const,
-      paddingHorizontal: 20,
-      marginBottom: 12,
-    },
-    modalTitle: {
-      fontSize: 18,
-      fontWeight: '700' as const,
-      color: colors.text,
-    },
-    modalCloseBtn: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: colors.surfaceSecondary,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-    searchContainer: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      backgroundColor: colors.surfaceSecondary,
-      borderRadius: 12,
-      marginHorizontal: 20,
-      marginBottom: 8,
-      paddingHorizontal: 12,
-      height: 44,
-      gap: 8,
-    },
-    searchInput: {
-      flex: 1,
-      fontSize: 16,
-      color: colors.text,
-      paddingVertical: 0,
-    },
-    otpBackRow: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: 4,
-      marginBottom: 28,
-    },
-    otpBackText: {
-      fontSize: 16,
-      color: colors.primary,
-      fontWeight: '500' as const,
-    },
-    otpTitle: {
-      fontSize: 26,
-      fontWeight: '700' as const,
-      color: colors.text,
-      letterSpacing: -0.5,
-      marginBottom: 8,
-    },
-    otpSubtitle: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      lineHeight: 20,
-      marginBottom: 4,
-    },
-    otpIdentifier: {
-      fontSize: 15,
-      fontWeight: '600' as const,
-      color: colors.text,
-      marginBottom: 32,
-    },
-    otpRow: {
-      flexDirection: 'row' as const,
-      gap: 8,
-      marginBottom: 20,
-      justifyContent: 'center' as const,
-    },
-    otpBox: {
-      width: (SCREEN_WIDTH - 56 - 40) / 6,
-      height: 56,
-      borderRadius: 14,
-      backgroundColor: colors.surface,
-      borderWidth: 2,
-      borderColor: colors.border,
-      textAlign: 'center' as const,
-      fontSize: 24,
-      fontWeight: '700' as const,
-      color: colors.text,
-    },
-    otpVerifyingRow: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      gap: 8,
-      paddingVertical: 8,
-    },
-    otpVerifyingText: {
-      fontSize: 14,
-      color: colors.textSecondary,
-      fontWeight: '500' as const,
-    },
-    resendRow: {
-      alignItems: 'center' as const,
-      marginTop: 20,
-    },
-    resendText: {
-      fontSize: 15,
-      color: colors.primary,
-      fontWeight: '500' as const,
-    },
-    resendTextDisabled: {
-      color: colors.textTertiary,
-    },
-    successOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: colors.background + 'F0',
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      zIndex: 10,
-    },
-    successCircle: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      backgroundColor: '#34C759',
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-  }), [colors]);
-
   const renderInputStep = () => (
     <Animated.View style={{
       flex: 1,
       opacity: inputFadeAnim,
       transform: [{ translateY: inputSlideAnim }],
     }}>
-      <View style={ds.topSection}>
-        <View style={ds.logoRow}>
-          <View style={ds.logoMark}>
-            <Text style={{ fontSize: 20, color: '#FFF' }}>🍃</Text>
-          </View>
-          <Text style={ds.logoText}>NutriUZ</Text>
-        </View>
-
-        <Text style={ds.heroTitle}>{tr('login', 'welcome')}</Text>
-        <Text style={ds.heroSubtitle}>{tr('login', 'appDescription')}</Text>
-      </View>
-
-      <View style={ds.carouselWrap}>
-        <ScrollView
-          ref={carouselRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={handleCarouselScroll}
-          contentContainerStyle={{ paddingHorizontal: 28 }}
-          decelerationRate="fast"
-          snapToInterval={SCREEN_WIDTH - 56}
-          snapToAlignment="start"
+      <View style={styles.heroSection}>
+        <LinearGradient
+          colors={['#0A7B5C', '#0B8F6C', '#10A37F']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroBg}
         >
-          {CAROUSEL_SLIDES.map((slide, i) => {
-            const IconComp = slide.icon;
-            return (
-              <View key={i} style={ds.carouselSlide}>
-                <View style={ds.slideCard}>
-                  <View style={[ds.slideIconWrap, { backgroundColor: slide.bg }]}>
-                    <IconComp size={24} color={slide.color} />
-                  </View>
-                  <View style={ds.slideTextWrap}>
-                    <Text style={ds.slideTitle}>{getSlideTitle(slide)}</Text>
-                    <Text style={ds.slideDesc} numberOfLines={2}>{getSlideDesc(slide)}</Text>
-                  </View>
+          <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+            <Animated.View style={[styles.heroContent, { transform: [{ scale: heroScale }] }]}>
+              <View style={styles.logoContainer}>
+                <View style={styles.logoCircle}>
+                  <Text style={styles.logoEmoji}>🍃</Text>
+                </View>
+                <Text style={styles.brandName}>NutriUZ</Text>
+              </View>
+
+              <Text style={styles.heroTitle}>{tr('login', 'welcome')}</Text>
+              <Text style={styles.heroSubtitle}>{tr('login', 'appDescription')}</Text>
+
+              <View style={styles.carouselContainer}>
+                <ScrollView
+                  ref={carouselRef}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onMomentumScrollEnd={handleCarouselScroll}
+                  contentContainerStyle={{ paddingHorizontal: 0 }}
+                  decelerationRate="fast"
+                  snapToInterval={SCREEN_WIDTH - 80}
+                  snapToAlignment="start"
+                >
+                  {CAROUSEL_SLIDES.map((slide, i) => {
+                    const IconComp = slide.icon;
+                    return (
+                      <View key={i} style={[styles.carouselSlide, { width: SCREEN_WIDTH - 80 }]}>
+                        <View style={styles.slideCard}>
+                          <View style={[styles.slideIconWrap, { backgroundColor: slide.bg }]}>
+                            <IconComp size={22} color={slide.color} />
+                          </View>
+                          <View style={styles.slideTextWrap}>
+                            <Text style={styles.slideTitle}>{getSlideTitle(slide)}</Text>
+                            <Text style={styles.slideDesc} numberOfLines={2}>{getSlideDesc(slide)}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+                <View style={styles.dotsRow}>
+                  {CAROUSEL_SLIDES.map((_, i) => (
+                    <Animated.View
+                      key={i}
+                      style={[
+                        styles.dot,
+                        i === carouselIndex && styles.dotActive,
+                        i === carouselIndex && { transform: [{ scale: dotPulse }] },
+                      ]}
+                    />
+                  ))}
                 </View>
               </View>
-            );
-          })}
-        </ScrollView>
-        <View style={ds.dotsRow}>
-          {CAROUSEL_SLIDES.map((_, i) => (
-            <View key={i} style={[ds.dot, i === carouselIndex && ds.dotActive]} />
-          ))}
-        </View>
+            </Animated.View>
+          </SafeAreaView>
+        </LinearGradient>
       </View>
 
-      <View style={{ flex: 1 }} />
-
-      <View style={ds.formSection}>
-        <View style={ds.tabRow}>
+      <View style={[styles.formCard, { backgroundColor: colors.background }]}>
+        <View style={[styles.tabRow, { backgroundColor: colors.surfaceSecondary }]}>
           <TouchableOpacity
-            style={[ds.tabButton, activeTab === 'phone' && ds.tabButtonActive]}
+            style={[styles.tabButton, activeTab === 'phone' && [styles.tabButtonActive, { backgroundColor: colors.surface }]]}
             onPress={() => switchTab('phone')}
             activeOpacity={0.7}
             testID="tab-phone"
           >
-            <Text style={[ds.tabText, activeTab === 'phone' && ds.tabTextActive]}>
+            <Phone size={15} color={activeTab === 'phone' ? colors.primary : colors.textTertiary} style={{ marginRight: 6 }} />
+            <Text style={[styles.tabText, { color: colors.textTertiary }, activeTab === 'phone' && { color: colors.primary, fontWeight: '600' as const }]}>
               {tr('login', 'phoneTab')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[ds.tabButton, activeTab === 'email' && ds.tabButtonActive]}
+            style={[styles.tabButton, activeTab === 'email' && [styles.tabButtonActive, { backgroundColor: colors.surface }]]}
             onPress={() => switchTab('email')}
             activeOpacity={0.7}
             testID="tab-email"
           >
-            <Text style={[ds.tabText, activeTab === 'email' && ds.tabTextActive]}>
+            <Mail size={15} color={activeTab === 'email' ? colors.primary : colors.textTertiary} style={{ marginRight: 6 }} />
+            <Text style={[styles.tabText, { color: colors.textTertiary }, activeTab === 'email' && { color: colors.primary, fontWeight: '600' as const }]}>
               {tr('login', 'emailTab')}
             </Text>
           </TouchableOpacity>
@@ -896,11 +554,12 @@ export default function LoginScreen() {
 
         <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
           {activeTab === 'phone' ? (
-            <View style={ds.phoneInputRow}>
+            <View style={styles.phoneInputRow}>
               <TouchableOpacity
                 style={[
-                  ds.countrySelector,
-                  inputFocused && ds.countrySelectorFocused,
+                  styles.countrySelector,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  inputFocused && { borderColor: colors.primary },
                 ]}
                 onPress={() => {
                   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -909,15 +568,16 @@ export default function LoginScreen() {
                 activeOpacity={0.7}
                 testID="country-selector"
               >
-                <Text style={ds.countryFlag}>{selectedCountry.flag}</Text>
-                <Text style={ds.countryDial}>{selectedCountry.dial}</Text>
-                <ChevronDown size={16} color={colors.textSecondary} />
+                <Text style={styles.countryFlag}>{selectedCountry.flag}</Text>
+                <Text style={[styles.countryDial, { color: colors.text }]}>{selectedCountry.dial}</Text>
+                <ChevronDown size={14} color={colors.textTertiary} />
               </TouchableOpacity>
               <TextInput
                 style={[
-                  ds.phoneInput,
-                  inputFocused && ds.phoneInputFocused,
-                  error ? ds.phoneInputError : null,
+                  styles.phoneInput,
+                  { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text },
+                  inputFocused && { borderColor: colors.primary },
+                  error ? { borderColor: colors.danger } : null,
                 ]}
                 value={phone}
                 onChangeText={(val) => { setPhone(val); setError(''); }}
@@ -932,9 +592,10 @@ export default function LoginScreen() {
           ) : (
             <TextInput
               style={[
-                ds.inputField,
-                inputFocused && ds.inputFieldFocused,
-                error ? ds.inputFieldError : null,
+                styles.emailInput,
+                { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text },
+                inputFocused && { borderColor: colors.primary },
+                error ? { borderColor: colors.danger } : null,
               ]}
               value={email}
               onChangeText={(val) => { setEmail(val); setError(''); }}
@@ -950,11 +611,14 @@ export default function LoginScreen() {
           )}
         </Animated.View>
 
-        {error ? <Text style={ds.errorText}>{error}</Text> : null}
+        {error ? <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text> : null}
 
         <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
           <TouchableOpacity
-            style={[ds.mainButton, (!isInputValid || isLoading) && ds.mainButtonDisabled]}
+            style={[
+              styles.mainButton,
+              (!isInputValid || isLoading) && styles.mainButtonDisabled,
+            ]}
             onPress={handleSendCode}
             onPressIn={handleButtonPressIn}
             onPressOut={handleButtonPressOut}
@@ -962,18 +626,28 @@ export default function LoginScreen() {
             activeOpacity={0.8}
             testID="send-code-button"
           >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <Text style={ds.mainButtonText}>{tr('login', 'sendCode')}</Text>
-                <ChevronRight size={20} color="#FFFFFF" />
-              </>
-            )}
+            <LinearGradient
+              colors={(!isInputValid || isLoading) ? ['#C8C8CC', '#AEAEB2'] : ['#0A7B5C', '#10A37F']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.mainButtonGradient}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Text style={styles.mainButtonText}>{tr('login', 'sendCode')}</Text>
+                  <ChevronRight size={20} color="#FFFFFF" />
+                </>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
 
-        <Text style={ds.termsText}>{tr('login', 'termsText')}</Text>
+        <View style={styles.secureRow}>
+          <Shield size={12} color={colors.textTertiary} />
+          <Text style={[styles.termsText, { color: colors.textTertiary }]}>{tr('login', 'termsText')}</Text>
+        </View>
       </View>
     </Animated.View>
   );
@@ -984,74 +658,88 @@ export default function LoginScreen() {
       opacity: otpFadeAnim,
       transform: [{ translateY: otpSlideAnim }],
     }}>
-      <View style={ds.topSection}>
-        <TouchableOpacity style={ds.otpBackRow} onPress={handleGoBack} activeOpacity={0.6} disabled={isVerifying}>
-          <ArrowLeft size={20} color={colors.primary} />
-          <Text style={ds.otpBackText}>{tr('login', 'changeMethod')}</Text>
-        </TouchableOpacity>
+      <View style={[styles.otpContainer, { backgroundColor: colors.background }]}>
+        <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+          <View style={styles.otpInner}>
+            <TouchableOpacity style={styles.otpBackRow} onPress={handleGoBack} activeOpacity={0.6} disabled={isVerifying}>
+              <View style={[styles.backButton, { backgroundColor: colors.surfaceSecondary }]}>
+                <ArrowLeft size={20} color={colors.text} />
+              </View>
+            </TouchableOpacity>
 
-        <Text style={ds.otpTitle}>{tr('login', 'otpTitle')}</Text>
-        <Text style={ds.otpSubtitle}>
-          {tr('login', 'otpSubtitle').replace('{target}', '')}
-        </Text>
-        <Text style={ds.otpIdentifier}>{currentIdentifier}</Text>
+            <View style={styles.otpHeader}>
+              <View style={[styles.otpIconCircle, { backgroundColor: colors.primary + '15' }]}>
+                <Mail size={28} color={colors.primary} />
+              </View>
+              <Text style={[styles.otpTitle, { color: colors.text }]}>{tr('login', 'otpTitle')}</Text>
+              <Text style={[styles.otpSubtitle, { color: colors.textSecondary }]}>
+                {tr('login', 'otpSubtitle').replace('{target}', '')}
+              </Text>
+              <View style={[styles.identifierBadge, { backgroundColor: colors.surfaceSecondary }]}>
+                <Text style={[styles.otpIdentifier, { color: colors.text }]}>{currentIdentifier}</Text>
+              </View>
+            </View>
 
-        <Animated.View style={[ds.otpRow, { transform: [{ translateX: shakeAnim }] }]}>
-          {otpDigits.map((digit, index) => (
-            <TextInput
-              key={index}
-              ref={(ref) => { otpInputRefs.current[index] = ref; }}
-              style={[
-                ds.otpBox,
-                {
-                  borderColor: getOtpBoxBorderColor(index),
-                  backgroundColor: otpSuccess ? '#34C759' + '12' : digit ? colors.surfaceSecondary : colors.surface,
-                },
-                focusedOtpIndex === index && !otpSuccess && !error && { borderWidth: 2.5 },
-              ]}
-              value={digit}
-              onChangeText={(text) => handleOTPChange(text, index)}
-              onKeyPress={({ nativeEvent }) => handleOTPKeyPress(nativeEvent.key, index)}
-              onFocus={() => setFocusedOtpIndex(index)}
-              onBlur={() => setFocusedOtpIndex(null)}
-              keyboardType="number-pad"
-              maxLength={index === 0 ? OTP_LENGTH : 1}
-              selectTextOnFocus
-              editable={!isVerifying && !otpSuccess}
-              testID={`otp-input-${index}`}
-            />
-          ))}
-        </Animated.View>
+            <Animated.View style={[styles.otpRow, { transform: [{ translateX: shakeAnim }] }]}>
+              {otpDigits.map((digit, index) => (
+                <TextInput
+                  key={index}
+                  ref={(ref) => { otpInputRefs.current[index] = ref; }}
+                  style={[
+                    styles.otpBox,
+                    {
+                      borderColor: getOtpBoxBorderColor(index),
+                      backgroundColor: otpSuccess ? '#34C759' + '12' : digit ? colors.surfaceSecondary : colors.surface,
+                      color: colors.text,
+                    },
+                    focusedOtpIndex === index && !otpSuccess && !error && { borderWidth: 2.5, borderColor: colors.primary },
+                  ]}
+                  value={digit}
+                  onChangeText={(text) => handleOTPChange(text, index)}
+                  onKeyPress={({ nativeEvent }) => handleOTPKeyPress(nativeEvent.key, index)}
+                  onFocus={() => setFocusedOtpIndex(index)}
+                  onBlur={() => setFocusedOtpIndex(null)}
+                  keyboardType="number-pad"
+                  maxLength={index === 0 ? OTP_LENGTH : 1}
+                  selectTextOnFocus
+                  editable={!isVerifying && !otpSuccess}
+                  testID={`otp-input-${index}`}
+                />
+              ))}
+            </Animated.View>
 
-        {isVerifying && (
-          <View style={ds.otpVerifyingRow}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={ds.otpVerifyingText}>{tr('login', 'verifying')}</Text>
+            {isVerifying && (
+              <View style={styles.otpVerifyingRow}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={[styles.otpVerifyingText, { color: colors.textSecondary }]}>{tr('login', 'verifying')}</Text>
+              </View>
+            )}
+
+            {error && !isVerifying ? (
+              <Text style={[styles.errorText, { textAlign: 'center' as const, marginTop: 4, color: colors.danger }]}>{error}</Text>
+            ) : null}
+
+            <View style={styles.resendRow}>
+              <TouchableOpacity
+                onPress={handleResendCode}
+                disabled={resendTimer > 0 || isLoading || isVerifying}
+                activeOpacity={0.6}
+                style={[styles.resendButton, { backgroundColor: resendTimer > 0 ? 'transparent' : colors.primary + '10' }]}
+              >
+                <Text style={[styles.resendText, { color: colors.primary }, (resendTimer > 0 || isVerifying) && { color: colors.textTertiary }]}>
+                  {resendTimer > 0
+                    ? tr('login', 'resendIn').replace('{sec}', resendTimer.toString())
+                    : tr('login', 'resendCode')}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        )}
-
-        {error && !isVerifying ? (
-          <Text style={[ds.errorText, { textAlign: 'center' as const, marginTop: 4 }]}>{error}</Text>
-        ) : null}
-
-        <View style={ds.resendRow}>
-          <TouchableOpacity
-            onPress={handleResendCode}
-            disabled={resendTimer > 0 || isLoading || isVerifying}
-            activeOpacity={0.6}
-          >
-            <Text style={[ds.resendText, (resendTimer > 0 || isVerifying) && ds.resendTextDisabled]}>
-              {resendTimer > 0
-                ? tr('login', 'resendIn').replace('{sec}', resendTimer.toString())
-                : tr('login', 'resendCode')}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        </SafeAreaView>
       </View>
 
       {successAnim && (
-        <View style={ds.successOverlay}>
-          <Animated.View style={[ds.successCircle, { transform: [{ scale: successScale }] }]}>
+        <View style={[styles.successOverlay, { backgroundColor: colors.background + 'F0' }]}>
+          <Animated.View style={[styles.successCircle, { transform: [{ scale: successScale }] }]}>
             <Check size={40} color="#FFFFFF" strokeWidth={3} />
           </Animated.View>
         </View>
@@ -1060,21 +748,19 @@ export default function LoginScreen() {
   );
 
   return (
-    <View style={ds.container}>
-      <SafeAreaView style={ds.safeArea}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <Animated.View style={{
-            flex: 1,
-            opacity: fadeAnim,
-            transform: [{ translateY: slideUp }],
-          }}>
-            {step === 'input' ? renderInputStep() : renderOTPStep()}
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Animated.View style={{
+          flex: 1,
+          opacity: fadeAnim,
+          transform: [{ translateY: slideUp }],
+        }}>
+          {step === 'input' ? renderInputStep() : renderOTPStep()}
+        </Animated.View>
+      </KeyboardAvoidingView>
 
       <Modal
         visible={countryPickerVisible}
@@ -1086,19 +772,19 @@ export default function LoginScreen() {
         }}
       >
         <TouchableOpacity
-          style={ds.modalOverlay}
+          style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => {
             setCountryPickerVisible(false);
             setCountrySearch('');
           }}
         >
-          <TouchableOpacity activeOpacity={1} style={ds.modalContent}>
-            <View style={ds.modalHandle} />
-            <View style={ds.modalHeader}>
-              <Text style={ds.modalTitle}>Davlatni tanlang</Text>
+          <TouchableOpacity activeOpacity={1} style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Davlatni tanlang</Text>
               <TouchableOpacity
-                style={ds.modalCloseBtn}
+                style={[styles.modalCloseBtn, { backgroundColor: colors.surfaceSecondary }]}
                 onPress={() => {
                   setCountryPickerVisible(false);
                   setCountrySearch('');
@@ -1108,10 +794,10 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={ds.searchContainer}>
+            <View style={[styles.searchContainer, { backgroundColor: colors.surfaceSecondary }]}>
               <Search size={18} color={colors.textTertiary} />
               <TextInput
-                style={ds.searchInput}
+                style={[styles.searchInput, { color: colors.text }]}
                 value={countrySearch}
                 onChangeText={setCountrySearch}
                 placeholder="Qidirish..."
@@ -1140,6 +826,380 @@ export default function LoginScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  heroSection: {
+    flex: 1,
+    minHeight: SCREEN_HEIGHT * 0.52,
+  },
+  heroBg: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  heroContent: {
+    flex: 1,
+    paddingHorizontal: 28,
+    paddingTop: 16,
+    justifyContent: 'center',
+  },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  logoCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  logoEmoji: {
+    fontSize: 22,
+  },
+  brandName: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  heroTitle: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -1,
+    lineHeight: 40,
+    marginBottom: 8,
+  },
+  heroSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.8)',
+    lineHeight: 22,
+    marginBottom: 28,
+  },
+  carouselContainer: {
+    marginBottom: 8,
+  },
+  carouselSlide: {
+    paddingRight: 12,
+  },
+  slideCard: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  slideIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  slideTextWrap: {
+    flex: 1,
+  },
+  slideTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 3,
+  },
+  slideDesc: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    lineHeight: 16,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 16,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  dotActive: {
+    width: 22,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 3,
+  },
+  formCard: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    marginTop: -24,
+  },
+  tabRow: {
+    flexDirection: 'row',
+    borderRadius: 14,
+    padding: 3,
+    marginBottom: 20,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: 11,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  tabButtonActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  phoneInputRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+  },
+  countrySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    height: 52,
+    paddingHorizontal: 12,
+    borderWidth: 1.5,
+    gap: 4,
+  },
+  countryFlag: {
+    fontSize: 20,
+  },
+  countryDial: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  phoneInput: {
+    flex: 1,
+    borderRadius: 14,
+    height: 52,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    borderWidth: 1.5,
+  },
+  emailInput: {
+    borderRadius: 14,
+    height: 52,
+    paddingHorizontal: 18,
+    fontSize: 16,
+    borderWidth: 1.5,
+    marginBottom: 14,
+  },
+  errorText: {
+    fontSize: 13,
+    marginBottom: 10,
+    marginLeft: 4,
+  },
+  mainButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  mainButtonDisabled: {
+    opacity: 0.7,
+  },
+  mainButtonGradient: {
+    height: 52,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  mainButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  secureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 16,
+  },
+  termsText: {
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  otpContainer: {
+    flex: 1,
+  },
+  otpInner: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+  },
+  otpBackRow: {
+    marginBottom: 24,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  otpHeader: {
+    alignItems: 'center',
+    marginBottom: 36,
+  },
+  otpIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  otpTitle: {
+    fontSize: 26,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  otpSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  identifierBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  otpIdentifier: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  otpRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 20,
+    justifyContent: 'center',
+  },
+  otpBox: {
+    width: (SCREEN_WIDTH - 48 - 40) / 6,
+    height: 56,
+    borderRadius: 14,
+    borderWidth: 2,
+    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  otpVerifyingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  otpVerifyingText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  resendRow: {
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  resendButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  resendText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  successOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  successCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#34C759',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+    paddingTop: 12,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 12,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    height: 44,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 0,
+  },
+});
 
 const countryItemStyle: Record<string, string | number> = {
   flexDirection: 'row',
