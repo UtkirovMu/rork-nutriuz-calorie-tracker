@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Camera, Plus, Flame, TrendingUp, Utensils, Trophy, CameraIcon, BarChart3, Sparkles } from 'lucide-react-native';
+import { Camera, Plus, Flame, TrendingUp, Sparkles, ScanLine, ChartPie, MessageCircleHeart, HeartPulse } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { generateObject } from '@rork-ai/toolkit-sdk';
@@ -173,10 +173,10 @@ Qisqa va aniq javob ber o'zbek tilida.
   }), [tr]);
 
   const quickLinks = useMemo(() => [
-    { label: tr('home', 'mealPlan'), icon: Utensils, color: '#FF9500', bg: '#FF9500' + '15', route: '/meal-plan' },
-    { label: tr('home', 'achievements'), icon: Trophy, color: '#FFD60A', bg: '#FFD60A' + '15', route: '/achievements' },
-    { label: tr('home', 'photos'), icon: CameraIcon, color: '#5856D6', bg: '#5856D6' + '15', route: '/progress-photos' },
-    { label: tr('home', 'statistics'), icon: BarChart3, color: '#636366', bg: '#636366' + '15', route: '/(tabs)/stats' },
+    { label: tr('home', 'aiScanner'), icon: ScanLine, color: '#FF3B30', bg: '#FF3B30' + '18', route: '/scanner' },
+    { label: tr('home', 'statistics'), icon: ChartPie, color: '#007AFF', bg: '#007AFF' + '18', route: '/(tabs)/stats' },
+    { label: tr('home', 'aiAdvice'), icon: MessageCircleHeart, color: '#34C759', bg: '#34C759' + '18', route: '/(tabs)/chat' },
+    { label: tr('home', 'healthyLife'), icon: HeartPulse, color: '#FF9500', bg: '#FF9500' + '18', route: '/meal-plan' },
   ], [tr]);
 
   const dynamicStyles = useMemo(() => StyleSheet.create({
@@ -205,13 +205,13 @@ Qisqa va aniq javob ber o'zbek tilida.
     quickStatCard: { flex: 1, backgroundColor: colors.surfaceSecondary, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 12, alignItems: 'center' as const },
     quickStatValue: { fontSize: 18, fontWeight: '700' as const, color: colors.text },
     quickStatLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '500' as const, marginTop: 2 },
-    quickLinksRow: { flexDirection: 'row' as const, gap: 10, marginBottom: 20 },
+    quickLinksRow: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 12, marginBottom: 20 },
     quickLinkCard: {
-      flex: 1, backgroundColor: colors.surface, borderRadius: 18, paddingVertical: 14, alignItems: 'center' as const, gap: 8,
-      shadowColor: colors.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
+      width: '47%' as const, backgroundColor: colors.surface, borderRadius: 20, paddingVertical: 18, paddingHorizontal: 14, alignItems: 'center' as const, gap: 10,
+      shadowColor: colors.black, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 14, elevation: 3,
     },
-    quickLinkIconWrap: { width: 40, height: 40, borderRadius: 14, alignItems: 'center' as const, justifyContent: 'center' as const },
-    quickLinkText: { fontSize: 11, fontWeight: '600' as const, color: colors.textSecondary },
+    quickLinkIconWrap: { width: 52, height: 52, borderRadius: 18, alignItems: 'center' as const, justifyContent: 'center' as const },
+    quickLinkText: { fontSize: 12, fontWeight: '700' as const, color: colors.text, textAlign: 'center' as const },
     analysisCard: {
       backgroundColor: colors.surface, borderRadius: 22, padding: 18, marginBottom: 20,
       shadowColor: colors.black, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 2,
