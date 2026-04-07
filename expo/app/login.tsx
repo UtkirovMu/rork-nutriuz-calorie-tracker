@@ -13,11 +13,14 @@ import {
   Easing,
   Modal,
   FlatList,
+  ScrollView,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { ArrowRight, ArrowLeft, ChevronRight, ChevronDown, Check, Search, X } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, ChevronDown, Check, Search, X, Scan, BarChart3, Brain, Apple } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +31,53 @@ type Step = 'input' | 'otp';
 
 const OTP_LENGTH = 6;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const CAROUSEL_SLIDES = [
+  {
+    icon: Scan,
+    color: '#34C759',
+    bg: '#34C759' + '18',
+    titleUz: 'AI Skaner',
+    titleRu: 'AI Сканер',
+    titleEn: 'AI Scanner',
+    descUz: 'Ovqatingizni rasmga oling — AI tarkibini tahlil qiladi',
+    descRu: 'Сфотографируйте еду — AI проанализирует состав',
+    descEn: 'Take a photo of your food — AI analyzes nutrition',
+  },
+  {
+    icon: BarChart3,
+    color: '#FF9500',
+    bg: '#FF9500' + '18',
+    titleUz: 'Statistika',
+    titleRu: 'Статистика',
+    titleEn: 'Statistics',
+    descUz: "Kaloriya, oqsil, uglevod va yog'larni kuzating",
+    descRu: 'Отслеживайте калории, белки, углеводы и жиры',
+    descEn: 'Track calories, protein, carbs and fats',
+  },
+  {
+    icon: Brain,
+    color: '#AF52DE',
+    bg: '#AF52DE' + '18',
+    titleUz: 'AI Maslahatchi',
+    titleRu: 'AI Консультант',
+    titleEn: 'AI Advisor',
+    descUz: "Shaxsiy ovqatlanish bo'yicha maslahat oling",
+    descRu: 'Получайте персональные советы по питанию',
+    descEn: 'Get personalized nutrition advice',
+  },
+  {
+    icon: Apple,
+    color: '#FF2D55',
+    bg: '#FF2D55' + '18',
+    titleUz: 'Ovqat rejasi',
+    titleRu: 'План питания',
+    titleEn: 'Meal Plan',
+    descUz: "AI haftalik ovqat rejangizni tuzib beradi",
+    descRu: 'AI составит ваш недельный план питания',
+    descEn: 'AI creates your weekly meal plan',
+  },
+];
 
 export default function LoginScreen() {
   const { colors } = useTheme();
@@ -40,16 +90,20 @@ export default function LoginScreen() {
   const [countryPickerVisible, setCountryPickerVisible] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
   const [step, setStep] = useState<Step>('input');
-  const [_otpCode, setOtpCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
   const [focusedOtpIndex, setFocusedOtpIndex] = useState<number | null>(null);
   const [successAnim, setSuccessAnim] = useState(false);
+  const [otpSuccess, setOtpSuccess] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const otpInputRefs = useRef<(TextInput | null)[]>([]);
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
+  const carouselRef = useRef<ScrollView>(null);
+  const carouselTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -67,6 +121,23 @@ export default function LoginScreen() {
       Animated.spring(slideUp, { toValue: 0, friction: 8, tension: 50, useNativeDriver: true }),
     ]).start();
   }, [fadeAnim, slideUp]);
+
+  useEffect(() => {
+    if (step === 'input') {
+      carouselTimer.current = setInterval(() => {
+        setCarouselIndex((prev) => {
+          const next = (prev + 1) % CAROUSEL_SLIDES.length;
+          carouselRef.current?.scrollTo({ x: next * (SCREEN_WIDTH - 56), animated: true });
+          return next;
+        });
+      }, 3500);
+      return () => {
+        if (carouselTimer.current) clearInterval(carouselTimer.current);
+      };
+    } else {
+      if (carouselTimer.current) clearInterval(carouselTimer.current);
+    }
+  }, [step]);
 
   useEffect(() => {
     if (resendTimer > 0) {
@@ -165,7 +236,8 @@ export default function LoginScreen() {
       setStep('otp');
       setResendTimer(60);
       setOtpDigits(Array(OTP_LENGTH).fill(''));
-      setOtpCode('');
+      setOtpSuccess(false);
+      setError('');
       animateToOTP();
 
       setTimeout(() => {
@@ -180,75 +252,87 @@ export default function LoginScreen() {
     }
   }, [activeTab, email, phone, tr, shakeInput, animateToOTP, getFullPhoneNumber, apiSendCode]);
 
-  const handleOTPChange = useCallback((text: string, index: number) => {
-    const newDigits = [...otpDigits];
-    if (text.length > 1) {
-      const chars = text.split('').slice(0, OTP_LENGTH - index);
-      chars.forEach((char, i) => {
-        if (index + i < OTP_LENGTH) newDigits[index + i] = char;
-      });
-      setOtpDigits(newDigits);
-      setOtpCode(newDigits.join(''));
-      const nextIndex = Math.min(index + chars.length, OTP_LENGTH - 1);
-      otpInputRefs.current[nextIndex]?.focus();
-      return;
-    }
-    newDigits[index] = text;
-    setOtpDigits(newDigits);
-    setOtpCode(newDigits.join(''));
+  const handleAutoVerify = useCallback(async (digits: string[]) => {
+    const code = digits.join('');
+    if (code.length !== OTP_LENGTH || isVerifying) return;
+
+    setIsVerifying(true);
     setError('');
-    if (text && index < OTP_LENGTH - 1) otpInputRefs.current[index + 1]?.focus();
-  }, [otpDigits]);
-
-  const handleOTPKeyPress = useCallback((key: string, index: number) => {
-    if (key === 'Backspace' && !otpDigits[index] && index > 0) {
-      const newDigits = [...otpDigits];
-      newDigits[index - 1] = '';
-      setOtpDigits(newDigits);
-      setOtpCode(newDigits.join(''));
-      otpInputRefs.current[index - 1]?.focus();
-    }
-  }, [otpDigits]);
-
-  const handleVerify = useCallback(async () => {
-    const code = otpDigits.join('');
-    if (code.length !== OTP_LENGTH) {
-      setError(tr('login', 'invalidCode'));
-      shakeInput();
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
-
-    setIsLoading(true);
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
       const identifier = activeTab === 'email' ? email.trim() : getFullPhoneNumber();
       const result = await apiVerifyCode(activeTab, identifier, code);
 
+      setOtpSuccess(true);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSuccessAnim(true);
       Animated.spring(successScale, { toValue: 1, friction: 4, tension: 80, useNativeDriver: true }).start();
 
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      await new Promise((resolve) => setTimeout(resolve, 800));
 
       if (result.isNewUser || !result.profile?.onboardingComplete) {
-        console.log('[Login] New user, going to onboarding:', identifier);
+        console.log('[Login] New user, going to onboarding');
         router.replace('/onboarding');
       } else {
-        console.log('[Login] Existing account found:', identifier);
+        console.log('[Login] Existing account found');
         router.replace('/(tabs)/(home)');
       }
     } catch (err: unknown) {
       console.error('[Login] Verify error:', err);
-      const errMsg = err instanceof Error ? err.message : tr('login', 'invalidCode');
-      setError(errMsg);
+      setOtpSuccess(false);
+      setError(tr('login', 'invalidCode'));
       shakeInput();
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+
+      setTimeout(() => {
+        setOtpDigits(Array(OTP_LENGTH).fill(''));
+        setError('');
+        otpInputRefs.current[0]?.focus();
+      }, 800);
     } finally {
-      setIsLoading(false);
+      setIsVerifying(false);
     }
-  }, [otpDigits, activeTab, email, tr, shakeInput, successScale, getFullPhoneNumber, apiVerifyCode]);
+  }, [activeTab, email, getFullPhoneNumber, apiVerifyCode, tr, shakeInput, successScale, isVerifying]);
+
+  const handleOTPChange = useCallback((text: string, index: number) => {
+    if (isVerifying || otpSuccess) return;
+
+    const newDigits = [...otpDigits];
+    if (text.length > 1) {
+      const chars = text.split('').filter(c => /\d/.test(c)).slice(0, OTP_LENGTH - index);
+      chars.forEach((char, i) => {
+        if (index + i < OTP_LENGTH) newDigits[index + i] = char;
+      });
+      setOtpDigits(newDigits);
+      const nextIndex = Math.min(index + chars.length, OTP_LENGTH - 1);
+      otpInputRefs.current[nextIndex]?.focus();
+
+      if (newDigits.join('').length === OTP_LENGTH) {
+        void handleAutoVerify(newDigits);
+      }
+      return;
+    }
+    newDigits[index] = text;
+    setOtpDigits(newDigits);
+    setError('');
+    if (text && index < OTP_LENGTH - 1) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+
+    if (newDigits.join('').length === OTP_LENGTH) {
+      void handleAutoVerify(newDigits);
+    }
+  }, [otpDigits, isVerifying, otpSuccess, handleAutoVerify]);
+
+  const handleOTPKeyPress = useCallback((key: string, index: number) => {
+    if (isVerifying || otpSuccess) return;
+    if (key === 'Backspace' && !otpDigits[index] && index > 0) {
+      const newDigits = [...otpDigits];
+      newDigits[index - 1] = '';
+      setOtpDigits(newDigits);
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  }, [otpDigits, isVerifying, otpSuccess]);
 
   const handleResendCode = useCallback(async () => {
     if (resendTimer > 0) return;
@@ -260,7 +344,7 @@ export default function LoginScreen() {
       console.log('[Login] Code resent to:', identifier);
       setResendTimer(60);
       setOtpDigits(Array(OTP_LENGTH).fill(''));
-      setOtpCode('');
+      setOtpSuccess(false);
       setError('');
       otpInputRefs.current[0]?.focus();
     } catch (err) {
@@ -275,7 +359,7 @@ export default function LoginScreen() {
     setStep('input');
     setError('');
     setOtpDigits(Array(OTP_LENGTH).fill(''));
-    setOtpCode('');
+    setOtpSuccess(false);
     setSuccessAnim(false);
     successScale.setValue(0);
     animateToInput();
@@ -285,8 +369,6 @@ export default function LoginScreen() {
     if (activeTab === 'email') return email.trim().length > 0;
     return phone.trim().length > 0;
   }, [activeTab, email, phone]);
-
-  const isOTPValid = useMemo(() => otpDigits.join('').length === OTP_LENGTH, [otpDigits]);
 
   const currentIdentifier = activeTab === 'email' ? email.trim() : getFullPhoneNumber();
 
@@ -304,6 +386,27 @@ export default function LoginScreen() {
     setCountryPickerVisible(false);
     setCountrySearch('');
   }, []);
+
+  const handleCarouselScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = e.nativeEvent.contentOffset.x;
+    const slideWidth = SCREEN_WIDTH - 56;
+    const index = Math.round(offsetX / slideWidth);
+    setCarouselIndex(index);
+  }, []);
+
+  const getSlideTitle = useCallback((slide: typeof CAROUSEL_SLIDES[0]) => {
+    const lang = tr('common', 'save') === 'Saqlash' ? 'uz' : tr('common', 'save') === 'Сохранить' ? 'ru' : 'en';
+    if (lang === 'ru') return slide.titleRu;
+    if (lang === 'en') return slide.titleEn;
+    return slide.titleUz;
+  }, [tr]);
+
+  const getSlideDesc = useCallback((slide: typeof CAROUSEL_SLIDES[0]) => {
+    const lang = tr('common', 'save') === 'Saqlash' ? 'uz' : tr('common', 'save') === 'Сохранить' ? 'ru' : 'en';
+    if (lang === 'ru') return slide.descRu;
+    if (lang === 'en') return slide.descEn;
+    return slide.descUz;
+  }, [tr]);
 
   const renderCountryItem = useCallback(({ item }: { item: CountryCode }) => (
     <TouchableOpacity
@@ -327,6 +430,15 @@ export default function LoginScreen() {
     </TouchableOpacity>
   ), [colors, selectedCountry, handleSelectCountry]);
 
+  const getOtpBoxBorderColor = useCallback((index: number) => {
+    if (otpSuccess) return '#34C759';
+    if (error && otpDigits.join('').length === OTP_LENGTH) return colors.danger;
+    if (error) return colors.danger;
+    if (focusedOtpIndex === index) return colors.primary;
+    if (otpDigits[index]) return colors.text + '40';
+    return colors.border;
+  }, [otpSuccess, error, otpDigits, focusedOtpIndex, colors]);
+
   const ds = useMemo(() => StyleSheet.create({
     container: {
       flex: 1,
@@ -335,87 +447,148 @@ export default function LoginScreen() {
     safeArea: {
       flex: 1,
     },
-    content: {
-      flex: 1,
-      justifyContent: 'space-between' as const,
-    },
     topSection: {
       paddingHorizontal: 28,
-      paddingTop: 60,
+      paddingTop: 20,
     },
     logoRow: {
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
-      gap: 12,
-      marginBottom: 48,
+      gap: 10,
+      marginBottom: 24,
     },
     logoMark: {
-      width: 44,
-      height: 44,
+      width: 40,
+      height: 40,
       borderRadius: 12,
       backgroundColor: colors.primary,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
     logoText: {
-      fontSize: 22,
+      fontSize: 20,
       fontWeight: '700' as const,
       color: colors.text,
       letterSpacing: -0.5,
     },
-    heroTitle: {
-      fontSize: 34,
+    carouselWrap: {
+      marginBottom: 24,
+    },
+    carouselSlide: {
+      width: SCREEN_WIDTH - 56,
+      paddingHorizontal: 4,
+    },
+    slideCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      padding: 24,
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: 16,
+      shadowColor: colors.black,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.06,
+      shadowRadius: 12,
+      elevation: 3,
+    },
+    slideIconWrap: {
+      width: 52,
+      height: 52,
+      borderRadius: 16,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+    },
+    slideTextWrap: {
+      flex: 1,
+    },
+    slideTitle: {
+      fontSize: 16,
       fontWeight: '700' as const,
       color: colors.text,
+      marginBottom: 4,
+    },
+    slideDesc: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      lineHeight: 18,
+    },
+    dotsRow: {
+      flexDirection: 'row' as const,
+      justifyContent: 'center' as const,
+      gap: 6,
+      marginTop: 14,
+    },
+    dot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.border,
+    },
+    dotActive: {
+      width: 20,
+      backgroundColor: colors.primary,
+    },
+    heroTitle: {
+      fontSize: 30,
+      fontWeight: '800' as const,
+      color: colors.text,
       letterSpacing: -0.8,
-      lineHeight: 40,
+      lineHeight: 36,
     },
     heroSubtitle: {
-      fontSize: 17,
+      fontSize: 15,
       color: colors.textSecondary,
-      marginTop: 10,
-      lineHeight: 24,
+      marginTop: 8,
+      lineHeight: 22,
+      marginBottom: 20,
     },
     formSection: {
       paddingHorizontal: 28,
-      paddingBottom: Platform.OS === 'ios' ? 20 : 32,
+      paddingBottom: Platform.OS === 'ios' ? 16 : 28,
     },
-    methodToggle: {
+    tabRow: {
       flexDirection: 'row' as const,
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: 12,
+      padding: 3,
       marginBottom: 16,
-      gap: 0,
     },
-    methodButton: {
+    tabButton: {
+      flex: 1,
       paddingVertical: 10,
-      paddingHorizontal: 18,
-      borderRadius: 20,
+      borderRadius: 10,
+      alignItems: 'center' as const,
     },
-    methodButtonActive: {
-      backgroundColor: colors.text + '0A',
+    tabButtonActive: {
+      backgroundColor: colors.surface,
+      shadowColor: colors.black,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      elevation: 2,
     },
-    methodText: {
-      fontSize: 15,
+    tabText: {
+      fontSize: 14,
       fontWeight: '500' as const,
       color: colors.textTertiary,
     },
-    methodTextActive: {
+    tabTextActive: {
       color: colors.text,
       fontWeight: '600' as const,
     },
     inputField: {
       backgroundColor: colors.surface,
       borderRadius: 14,
-      height: 56,
+      height: 54,
       paddingHorizontal: 18,
       fontSize: 17,
       color: colors.text,
-      borderWidth: 1,
+      borderWidth: 1.5,
       borderColor: colors.border,
       marginBottom: 12,
     },
     inputFieldFocused: {
       borderColor: colors.primary,
-      backgroundColor: colors.surface,
     },
     inputFieldError: {
       borderColor: colors.danger,
@@ -423,13 +596,13 @@ export default function LoginScreen() {
     errorText: {
       fontSize: 13,
       color: colors.danger,
-      marginBottom: 12,
+      marginBottom: 10,
       marginLeft: 4,
     },
     mainButton: {
-      height: 56,
+      height: 54,
       borderRadius: 14,
-      backgroundColor: colors.text,
+      backgroundColor: colors.primary,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       flexDirection: 'row' as const,
@@ -439,17 +612,17 @@ export default function LoginScreen() {
       backgroundColor: colors.border,
     },
     mainButtonText: {
-      fontSize: 17,
+      fontSize: 16,
       fontWeight: '600' as const,
-      color: colors.background,
+      color: '#FFFFFF',
     },
     termsText: {
-      fontSize: 12,
+      fontSize: 11,
       color: colors.textTertiary,
       textAlign: 'center' as const,
-      marginTop: 16,
-      lineHeight: 18,
-      paddingHorizontal: 20,
+      marginTop: 14,
+      lineHeight: 16,
+      paddingHorizontal: 16,
     },
     phoneInputRow: {
       flexDirection: 'row' as const,
@@ -461,9 +634,9 @@ export default function LoginScreen() {
       alignItems: 'center' as const,
       backgroundColor: colors.surface,
       borderRadius: 14,
-      height: 56,
+      height: 54,
       paddingHorizontal: 12,
-      borderWidth: 1,
+      borderWidth: 1.5,
       borderColor: colors.border,
       gap: 4,
     },
@@ -482,11 +655,11 @@ export default function LoginScreen() {
       flex: 1,
       backgroundColor: colors.surface,
       borderRadius: 14,
-      height: 56,
+      height: 54,
       paddingHorizontal: 16,
       fontSize: 17,
       color: colors.text,
-      borderWidth: 1,
+      borderWidth: 1.5,
       borderColor: colors.border,
     },
     phoneInputFocused: {
@@ -556,25 +729,25 @@ export default function LoginScreen() {
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
       gap: 4,
-      marginBottom: 32,
+      marginBottom: 28,
     },
     otpBackText: {
-      fontSize: 17,
+      fontSize: 16,
       color: colors.primary,
-      fontWeight: '400' as const,
+      fontWeight: '500' as const,
     },
     otpTitle: {
-      fontSize: 28,
+      fontSize: 26,
       fontWeight: '700' as const,
       color: colors.text,
       letterSpacing: -0.5,
       marginBottom: 8,
     },
     otpSubtitle: {
-      fontSize: 15,
+      fontSize: 14,
       color: colors.textSecondary,
-      lineHeight: 22,
-      marginBottom: 6,
+      lineHeight: 20,
+      marginBottom: 4,
     },
     otpIdentifier: {
       fontSize: 15,
@@ -585,47 +758,36 @@ export default function LoginScreen() {
     otpRow: {
       flexDirection: 'row' as const,
       gap: 8,
-      marginBottom: 24,
+      marginBottom: 20,
       justifyContent: 'center' as const,
     },
     otpBox: {
       width: (SCREEN_WIDTH - 56 - 40) / 6,
       height: 56,
-      borderRadius: 12,
+      borderRadius: 14,
       backgroundColor: colors.surface,
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: colors.border,
       textAlign: 'center' as const,
       fontSize: 24,
-      fontWeight: '600' as const,
+      fontWeight: '700' as const,
       color: colors.text,
     },
-    otpBoxFocused: {
-      borderColor: colors.primary,
-      borderWidth: 2,
+    otpVerifyingRow: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      gap: 8,
+      paddingVertical: 8,
     },
-    otpBoxFilled: {
-      borderColor: colors.text + '30',
-      backgroundColor: colors.surfaceSecondary,
-    },
-    otpBoxError: {
-      borderColor: colors.danger,
-    },
-    otpHint: {
-      fontSize: 13,
-      color: colors.textTertiary,
-      textAlign: 'center' as const,
-      marginBottom: 24,
-      backgroundColor: colors.surfaceSecondary,
-      alignSelf: 'center' as const,
-      paddingHorizontal: 14,
-      paddingVertical: 6,
-      borderRadius: 8,
-      overflow: 'hidden' as const,
+    otpVerifyingText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      fontWeight: '500' as const,
     },
     resendRow: {
       alignItems: 'center' as const,
-      marginTop: 16,
+      marginTop: 20,
     },
     resendText: {
       fontSize: 15,
@@ -641,13 +803,12 @@ export default function LoginScreen() {
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       zIndex: 10,
-      borderRadius: 14,
     },
     successCircle: {
-      width: 72,
-      height: 72,
-      borderRadius: 36,
-      backgroundColor: colors.primary,
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: '#34C759',
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
@@ -655,13 +816,14 @@ export default function LoginScreen() {
 
   const renderInputStep = () => (
     <Animated.View style={{
+      flex: 1,
       opacity: inputFadeAnim,
       transform: [{ translateY: inputSlideAnim }],
     }}>
       <View style={ds.topSection}>
         <View style={ds.logoRow}>
           <View style={ds.logoMark}>
-            <Text style={{ fontSize: 22, color: '#FFF' }}>🍃</Text>
+            <Text style={{ fontSize: 20, color: '#FFF' }}>🍃</Text>
           </View>
           <Text style={ds.logoText}>NutriUZ</Text>
         </View>
@@ -670,27 +832,63 @@ export default function LoginScreen() {
         <Text style={ds.heroSubtitle}>{tr('login', 'appDescription')}</Text>
       </View>
 
+      <View style={ds.carouselWrap}>
+        <ScrollView
+          ref={carouselRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={handleCarouselScroll}
+          contentContainerStyle={{ paddingHorizontal: 28 }}
+          decelerationRate="fast"
+          snapToInterval={SCREEN_WIDTH - 56}
+          snapToAlignment="start"
+        >
+          {CAROUSEL_SLIDES.map((slide, i) => {
+            const IconComp = slide.icon;
+            return (
+              <View key={i} style={ds.carouselSlide}>
+                <View style={ds.slideCard}>
+                  <View style={[ds.slideIconWrap, { backgroundColor: slide.bg }]}>
+                    <IconComp size={24} color={slide.color} />
+                  </View>
+                  <View style={ds.slideTextWrap}>
+                    <Text style={ds.slideTitle}>{getSlideTitle(slide)}</Text>
+                    <Text style={ds.slideDesc} numberOfLines={2}>{getSlideDesc(slide)}</Text>
+                  </View>
+                </View>
+              </View>
+            );
+          })}
+        </ScrollView>
+        <View style={ds.dotsRow}>
+          {CAROUSEL_SLIDES.map((_, i) => (
+            <View key={i} style={[ds.dot, i === carouselIndex && ds.dotActive]} />
+          ))}
+        </View>
+      </View>
+
       <View style={{ flex: 1 }} />
 
       <View style={ds.formSection}>
-        <View style={ds.methodToggle}>
+        <View style={ds.tabRow}>
           <TouchableOpacity
-            style={[ds.methodButton, activeTab === 'phone' && ds.methodButtonActive]}
+            style={[ds.tabButton, activeTab === 'phone' && ds.tabButtonActive]}
             onPress={() => switchTab('phone')}
             activeOpacity={0.7}
             testID="tab-phone"
           >
-            <Text style={[ds.methodText, activeTab === 'phone' && ds.methodTextActive]}>
+            <Text style={[ds.tabText, activeTab === 'phone' && ds.tabTextActive]}>
               {tr('login', 'phoneTab')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[ds.methodButton, activeTab === 'email' && ds.methodButtonActive]}
+            style={[ds.tabButton, activeTab === 'email' && ds.tabButtonActive]}
             onPress={() => switchTab('email')}
             activeOpacity={0.7}
             testID="tab-email"
           >
-            <Text style={[ds.methodText, activeTab === 'email' && ds.methodTextActive]}>
+            <Text style={[ds.tabText, activeTab === 'email' && ds.tabTextActive]}>
               {tr('login', 'emailTab')}
             </Text>
           </TouchableOpacity>
@@ -765,11 +963,11 @@ export default function LoginScreen() {
             testID="send-code-button"
           >
             {isLoading ? (
-              <ActivityIndicator size="small" color={colors.background} />
+              <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <>
                 <Text style={ds.mainButtonText}>{tr('login', 'sendCode')}</Text>
-                <ChevronRight size={20} color={colors.background} />
+                <ChevronRight size={20} color="#FFFFFF" />
               </>
             )}
           </TouchableOpacity>
@@ -787,7 +985,7 @@ export default function LoginScreen() {
       transform: [{ translateY: otpSlideAnim }],
     }}>
       <View style={ds.topSection}>
-        <TouchableOpacity style={ds.otpBackRow} onPress={handleGoBack} activeOpacity={0.6}>
+        <TouchableOpacity style={ds.otpBackRow} onPress={handleGoBack} activeOpacity={0.6} disabled={isVerifying}>
           <ArrowLeft size={20} color={colors.primary} />
           <Text style={ds.otpBackText}>{tr('login', 'changeMethod')}</Text>
         </TouchableOpacity>
@@ -805,9 +1003,11 @@ export default function LoginScreen() {
               ref={(ref) => { otpInputRefs.current[index] = ref; }}
               style={[
                 ds.otpBox,
-                focusedOtpIndex === index && ds.otpBoxFocused,
-                digit ? ds.otpBoxFilled : null,
-                error ? ds.otpBoxError : null,
+                {
+                  borderColor: getOtpBoxBorderColor(index),
+                  backgroundColor: otpSuccess ? '#34C759' + '12' : digit ? colors.surfaceSecondary : colors.surface,
+                },
+                focusedOtpIndex === index && !otpSuccess && !error && { borderWidth: 2.5 },
               ]}
               value={digit}
               onChangeText={(text) => handleOTPChange(text, index)}
@@ -817,20 +1017,30 @@ export default function LoginScreen() {
               keyboardType="number-pad"
               maxLength={index === 0 ? OTP_LENGTH : 1}
               selectTextOnFocus
+              editable={!isVerifying && !otpSuccess}
               testID={`otp-input-${index}`}
             />
           ))}
         </Animated.View>
 
-        {error ? <Text style={[ds.errorText, { textAlign: 'center' as const }]}>{error}</Text> : null}
+        {isVerifying && (
+          <View style={ds.otpVerifyingRow}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={ds.otpVerifyingText}>{tr('login', 'verifying')}</Text>
+          </View>
+        )}
+
+        {error && !isVerifying ? (
+          <Text style={[ds.errorText, { textAlign: 'center' as const, marginTop: 4 }]}>{error}</Text>
+        ) : null}
 
         <View style={ds.resendRow}>
           <TouchableOpacity
             onPress={handleResendCode}
-            disabled={resendTimer > 0 || isLoading}
+            disabled={resendTimer > 0 || isLoading || isVerifying}
             activeOpacity={0.6}
           >
-            <Text style={[ds.resendText, resendTimer > 0 && ds.resendTextDisabled]}>
+            <Text style={[ds.resendText, (resendTimer > 0 || isVerifying) && ds.resendTextDisabled]}>
               {resendTimer > 0
                 ? tr('login', 'resendIn').replace('{sec}', resendTimer.toString())
                 : tr('login', 'resendCode')}
@@ -839,35 +1049,10 @@ export default function LoginScreen() {
         </View>
       </View>
 
-      <View style={{ flex: 1 }} />
-
-      <View style={ds.formSection}>
-        <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-          <TouchableOpacity
-            style={[ds.mainButton, (!isOTPValid || isLoading) && ds.mainButtonDisabled]}
-            onPress={handleVerify}
-            onPressIn={handleButtonPressIn}
-            onPressOut={handleButtonPressOut}
-            disabled={!isOTPValid || isLoading}
-            activeOpacity={0.8}
-            testID="verify-button"
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color={colors.background} />
-            ) : (
-              <>
-                <Text style={ds.mainButtonText}>{tr('login', 'verifyButton')}</Text>
-                <ArrowRight size={20} color={colors.background} />
-              </>
-            )}
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
-
       {successAnim && (
         <View style={ds.successOverlay}>
           <Animated.View style={[ds.successCircle, { transform: [{ scale: successScale }] }]}>
-            <Check size={36} color="#FFFFFF" strokeWidth={3} />
+            <Check size={40} color="#FFFFFF" strokeWidth={3} />
           </Animated.View>
         </View>
       )}

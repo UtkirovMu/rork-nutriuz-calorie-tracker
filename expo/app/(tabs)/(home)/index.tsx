@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Redirect, router } from 'expo-router';
+import { router } from 'expo-router';
 import { Camera, Plus, Flame, TrendingUp, Utensils, Trophy, CameraIcon, BarChart3, Sparkles } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -45,10 +45,12 @@ export default function HomeScreen() {
   const { profile, dailyTargets, todayMeals, todayTotals, removeMeal, streak } = useUser();
   const { colors } = useTheme();
   const { tr } = useLanguage();
+  const { auth, isLoading: authLoading } = useAuth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   const cardAnims = useRef(
     Array.from({ length: 6 }, () => ({
@@ -83,7 +85,21 @@ Qisqa va aniq javob ber o'zbek tilida.
   });
 
   useEffect(() => {
-    if (profile.onboardingComplete) {
+    if (authLoading || redirecting) return;
+    if (!auth.isLoggedIn) {
+      setRedirecting(true);
+      router.replace('/login');
+      return;
+    }
+    if (!profile.onboardingComplete) {
+      setRedirecting(true);
+      router.replace('/onboarding');
+      return;
+    }
+  }, [auth.isLoggedIn, profile.onboardingComplete, authLoading, redirecting]);
+
+  useEffect(() => {
+    if (profile.onboardingComplete && !redirecting) {
       Animated.parallel([
         Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
         Animated.spring(slideAnim, { toValue: 0, friction: 8, useNativeDriver: true }),
@@ -97,7 +113,7 @@ Qisqa va aniq javob ber o'zbek tilida.
         Animated.parallel(staggerAnims).start();
       });
     }
-  }, [profile.onboardingComplete, fadeAnim, slideAnim, cardAnims]);
+  }, [profile.onboardingComplete, fadeAnim, slideAnim, cardAnims, redirecting]);
 
   const shouldAnalyze = profile.onboardingComplete && todayMeals.length > 0;
   const hasAnalysis = !!analysisMutation.data;
@@ -139,42 +155,33 @@ Qisqa va aniq javob ber o'zbek tilida.
 
   const getMealsForType = (type: MealType) => todayMeals.filter(m => m.mealType === type);
 
-  const { auth } = useAuth();
-
-  if (!auth.isLoggedIn) {
-    return <Redirect href="/login" />;
-  }
-
-  if (!profile.onboardingComplete) {
-    return <Redirect href="/onboarding" />;
-  }
-
   const now = new Date();
   const hour = now.getHours();
   const greeting = hour < 12 ? tr('greeting', 'morning') : hour < 18 ? tr('greeting', 'afternoon') : tr('greeting', 'evening');
   const caloriesRemaining = Math.max(0, dailyTargets.calories - todayTotals.calories);
 
   const analysisData = analysisMutation.data;
-  const statusColors = {
+  const statusColors = useMemo(() => ({
     low: colors.carbs,
     on_track: colors.calories,
     high: colors.danger,
-  };
-  const statusLabels = {
+  }), [colors]);
+  const statusLabels = useMemo(() => ({
     low: tr('home', 'statusLow'),
     on_track: tr('home', 'statusOnTrack'),
     high: tr('home', 'statusHigh'),
-  };
+  }), [tr]);
 
-  const quickLinks = [
+  const quickLinks = useMemo(() => [
     { label: tr('home', 'mealPlan'), icon: Utensils, color: '#FF9500', bg: '#FF9500' + '15', route: '/meal-plan' },
     { label: tr('home', 'achievements'), icon: Trophy, color: '#FFD60A', bg: '#FFD60A' + '15', route: '/achievements' },
     { label: tr('home', 'photos'), icon: CameraIcon, color: '#5856D6', bg: '#5856D6' + '15', route: '/progress-photos' },
     { label: tr('home', 'statistics'), icon: BarChart3, color: '#636366', bg: '#636366' + '15', route: '/(tabs)/stats' },
-  ];
+  ], [tr]);
 
   const dynamicStyles = useMemo(() => StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
+    redirectContainer: { flex: 1, backgroundColor: colors.background },
     greeting: { fontSize: 14, color: colors.textSecondary, fontWeight: '500' as const },
     userName: { fontSize: 28, fontWeight: '800' as const, color: colors.text, marginTop: 2, letterSpacing: -0.5 },
     scanButton: {
@@ -238,6 +245,10 @@ Qisqa va aniq javob ber o'zbek tilida.
     },
     emptyMealText: { fontSize: 14, color: colors.textTertiary, fontWeight: '500' as const },
   }), [colors]);
+
+  if (redirecting || authLoading || !auth.isLoggedIn || !profile.onboardingComplete) {
+    return <View style={dynamicStyles.redirectContainer} />;
+  }
 
   return (
     <View style={dynamicStyles.screen}>
