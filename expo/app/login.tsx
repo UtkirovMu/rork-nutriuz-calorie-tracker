@@ -13,14 +13,14 @@ import {
   Easing,
   Modal,
   FlatList,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { ArrowLeft, ChevronDown, Check, Search, X, Phone, Mail, Lock, Leaf, Sparkles, TrendingUp, Camera } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ArrowLeft, ChevronDown, Check, Search, X, Phone, Mail, Lock, Leaf, Sparkles, TrendingUp, Camera, Heart, Shield } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,44 +30,58 @@ type LoginMethod = 'email' | 'phone';
 type Step = 'input' | 'otp';
 
 const OTP_LENGTH = 6;
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+const HERO_IMAGES = [
+  'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&q=80',
+  'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80',
+  'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800&q=80',
+];
 
 const FEATURES = [
   {
     icon: Camera,
+    color: '#FF6B6B',
+    bgColor: '#FF6B6B15',
     titleUz: 'AI Skaner',
     titleRu: 'AI Сканер',
     titleEn: 'AI Scanner',
-    descUz: 'Ovqatni rasmga oling',
-    descRu: 'Сфотографируйте еду',
-    descEn: 'Snap your food',
+    descUz: 'Ovqatni rasmga oling va kaloriyani bilib oling',
+    descRu: 'Сфотографируйте еду и узнайте калории',
+    descEn: 'Snap your food and get calories',
   },
   {
     icon: TrendingUp,
+    color: '#5AC8FA',
+    bgColor: '#5AC8FA15',
     titleUz: 'Statistika',
     titleRu: 'Статистика',
     titleEn: 'Statistics',
-    descUz: 'Kaloriyani kuzating',
-    descRu: 'Отслеживайте калории',
-    descEn: 'Track calories',
+    descUz: "Kunlik, haftalik va oylik ko'rsatkichlar",
+    descRu: 'Дневная, недельная и месячная статистика',
+    descEn: 'Daily, weekly and monthly stats',
   },
   {
     icon: Sparkles,
+    color: '#FFD60A',
+    bgColor: '#FFD60A15',
     titleUz: 'AI Maslahat',
     titleRu: 'AI Советы',
     titleEn: 'AI Advice',
-    descUz: 'Shaxsiy tavsiyalar',
-    descRu: 'Персональные советы',
-    descEn: 'Personal tips',
+    descUz: 'Shaxsiy ovqatlanish tavsiyalari',
+    descRu: 'Персональные рекомендации по питанию',
+    descEn: 'Personalized nutrition tips',
   },
   {
-    icon: Leaf,
-    titleUz: 'Ovqat rejasi',
-    titleRu: 'План питания',
-    titleEn: 'Meal Plan',
-    descUz: 'Haftalik reja',
-    descRu: 'Недельный план',
-    descEn: 'Weekly plan',
+    icon: Heart,
+    color: '#FF2D55',
+    bgColor: '#FF2D5515',
+    titleUz: "Sog'lom hayot",
+    titleRu: 'Здоровая жизнь',
+    titleEn: 'Healthy Life',
+    descUz: 'Maqsadlaringizga erishing',
+    descRu: 'Достигайте своих целей',
+    descEn: 'Reach your goals',
   },
 ];
 
@@ -90,55 +104,48 @@ export default function LoginScreen() {
   const [otpSuccess, setOtpSuccess] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [featureIndex, setFeatureIndex] = useState(0);
+  const [heroIndex, setHeroIndex] = useState(0);
 
   const otpInputRefs = useRef<(TextInput | null)[]>([]);
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
-  const featureScrollRef = useRef<ScrollView>(null);
-  const featureTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const heroScrollRef = useRef<ScrollView>(null);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideUp = useRef(new Animated.Value(40)).current;
+  const slideUp = useRef(new Animated.Value(50)).current;
   const otpFadeAnim = useRef(new Animated.Value(0)).current;
   const otpSlideAnim = useRef(new Animated.Value(30)).current;
   const inputFadeAnim = useRef(new Animated.Value(1)).current;
   const inputSlideAnim = useRef(new Animated.Value(0)).current;
   const successScale = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
-  const logoFloat = useRef(new Animated.Value(0)).current;
+  const heroOpacity = useRef(new Animated.Value(0)).current;
+  const featureAnims = useRef(FEATURES.map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.spring(slideUp, { toValue: 0, friction: 9, tension: 40, useNativeDriver: true }),
+    Animated.timing(heroOpacity, { toValue: 1, duration: 800, useNativeDriver: true }).start();
+
+    Animated.stagger(120, [
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 600, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.spring(slideUp, { toValue: 0, friction: 9, tension: 50, useNativeDriver: true }),
+      ]),
+      ...featureAnims.map((anim) =>
+        Animated.spring(anim, { toValue: 1, friction: 8, tension: 60, useNativeDriver: true })
+      ),
     ]).start();
-
-    const float = Animated.loop(
-      Animated.sequence([
-        Animated.timing(logoFloat, { toValue: -6, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(logoFloat, { toValue: 0, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
-    );
-    float.start();
-    return () => float.stop();
-  }, [fadeAnim, slideUp, logoFloat]);
+  }, [fadeAnim, slideUp, heroOpacity, featureAnims]);
 
   useEffect(() => {
-    if (step === 'input') {
-      featureTimer.current = setInterval(() => {
-        setFeatureIndex((prev) => {
-          const next = (prev + 1) % FEATURES.length;
-          featureScrollRef.current?.scrollTo({ x: next * (SCREEN_WIDTH - 64), animated: true });
-          return next;
-        });
-      }, 3000);
-      return () => {
-        if (featureTimer.current) clearInterval(featureTimer.current);
-      };
-    } else {
-      if (featureTimer.current) clearInterval(featureTimer.current);
-    }
+    if (step !== 'input') return;
+    const timer = setInterval(() => {
+      setHeroIndex((prev) => {
+        const next = (prev + 1) % HERO_IMAGES.length;
+        heroScrollRef.current?.scrollTo({ x: next * SCREEN_WIDTH, animated: true });
+        return next;
+      });
+    }, 4000);
+    return () => clearInterval(timer);
   }, [step]);
 
   useEffect(() => {
@@ -379,7 +386,7 @@ export default function LoginScreen() {
   const currentIdentifier = activeTab === 'email' ? email.trim() : getFullPhoneNumber();
 
   const handleButtonPressIn = useCallback(() => {
-    Animated.spring(buttonScale, { toValue: 0.96, friction: 8, useNativeDriver: true }).start();
+    Animated.spring(buttonScale, { toValue: 0.95, friction: 8, useNativeDriver: true }).start();
   }, [buttonScale]);
 
   const handleButtonPressOut = useCallback(() => {
@@ -393,25 +400,11 @@ export default function LoginScreen() {
     setCountrySearch('');
   }, []);
 
-  const handleFeatureScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetX = e.nativeEvent.contentOffset.x;
-    const slideWidth = SCREEN_WIDTH - 64;
-    const index = Math.round(offsetX / slideWidth);
-    setFeatureIndex(index);
-  }, []);
-
   const getFeatureTitle = useCallback((f: typeof FEATURES[0]) => {
     const lang = getLang();
     if (lang === 'ru') return f.titleRu;
     if (lang === 'en') return f.titleEn;
     return f.titleUz;
-  }, [getLang]);
-
-  const getFeatureDesc = useCallback((f: typeof FEATURES[0]) => {
-    const lang = getLang();
-    if (lang === 'ru') return f.descRu;
-    if (lang === 'en') return f.descEn;
-    return f.descUz;
   }, [getLang]);
 
   const renderCountryItem = useCallback(({ item }: { item: CountryCode }) => (
@@ -437,14 +430,13 @@ export default function LoginScreen() {
   ), [colors, selectedCountry, handleSelectCountry]);
 
   const getOtpBoxStyle = useCallback((index: number) => {
-    if (otpSuccess) return { borderColor: '#34C759', backgroundColor: '#34C759' + '08' };
-    if (error) return { borderColor: colors.danger, backgroundColor: colors.danger + '06' };
-    if (focusedOtpIndex === index) return { borderColor: colors.text, backgroundColor: colors.surface };
+    if (otpSuccess) return { borderColor: '#34C759', backgroundColor: '#34C75910' };
+    if (error) return { borderColor: colors.danger, backgroundColor: colors.danger + '08' };
+    if (focusedOtpIndex === index) return { borderColor: colors.primary, backgroundColor: colors.primary + '08' };
     if (otpDigits[index]) return { borderColor: colors.border, backgroundColor: colors.surfaceSecondary };
     return { borderColor: colors.border, backgroundColor: colors.surface };
   }, [otpSuccess, error, focusedOtpIndex, otpDigits, colors]);
 
-  const accentColor = '#1A1A1A';
   const isDark = colors.background === '#0E0E10';
 
   const renderInputStep = () => (
@@ -453,75 +445,93 @@ export default function LoginScreen() {
       opacity: inputFadeAnim,
       transform: [{ translateY: inputSlideAnim }],
     }}>
-      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: 'transparent' }}>
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={styles.inputScrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          bounces={false}
-        >
-          <View style={styles.headerSection}>
-            <Animated.View style={[styles.logoWrap, { transform: [{ translateY: logoFloat }] }]}>
-              <View style={[styles.logoBox, { backgroundColor: isDark ? '#1C3D2E' : '#E8F5EE' }]}>
-                <Leaf size={28} color={colors.primary} strokeWidth={2.5} />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        bounces={false}
+      >
+        <Animated.View style={[styles.heroSection, { opacity: heroOpacity }]}>
+          <ScrollView
+            ref={heroScrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            scrollEnabled={false}
+          >
+            {HERO_IMAGES.map((uri, i) => (
+              <View key={i} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.38 }}>
+                <Image
+                  source={{ uri }}
+                  style={styles.heroImage}
+                  resizeMode="cover"
+                />
               </View>
-            </Animated.View>
-
-            <Text style={[styles.appName, { color: colors.text }]}>NutriUZ</Text>
-            <Text style={[styles.welcomeTitle, { color: colors.text }]}>{tr('login', 'welcome')}</Text>
-            <Text style={[styles.welcomeDesc, { color: colors.textSecondary }]}>
-              {tr('login', 'appDescription')}
-            </Text>
-          </View>
-
-          <View style={styles.featuresSection}>
-            <ScrollView
-              ref={featureScrollRef}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={handleFeatureScroll}
-              decelerationRate="fast"
-              snapToInterval={SCREEN_WIDTH - 64}
-              snapToAlignment="start"
-            >
-              {FEATURES.map((feature, i) => {
-                const IconComp = feature.icon;
-                return (
-                  <View key={i} style={[styles.featureSlide, { width: SCREEN_WIDTH - 64 }]}>
-                    <View style={[styles.featureCard, {
-                      backgroundColor: isDark ? colors.surface : '#F8F8FA',
-                      borderColor: isDark ? colors.border : '#EFEFEF',
-                    }]}>
-                      <View style={[styles.featureIconBox, { backgroundColor: colors.primary + '12' }]}>
-                        <IconComp size={18} color={colors.primary} strokeWidth={2} />
-                      </View>
-                      <View style={styles.featureTextWrap}>
-                        <Text style={[styles.featureTitle, { color: colors.text }]}>{getFeatureTitle(feature)}</Text>
-                        <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>{getFeatureDesc(feature)}</Text>
-                      </View>
-                    </View>
-                  </View>
-                );
-              })}
-            </ScrollView>
-            <View style={styles.dotsRow}>
-              {FEATURES.map((_, i) => (
+            ))}
+          </ScrollView>
+          <LinearGradient
+            colors={['transparent', isDark ? '#0E0E10' : '#F5F5F7']}
+            style={styles.heroGradient}
+          />
+          <View style={styles.heroOverlay}>
+            <View style={styles.heroDots}>
+              {HERO_IMAGES.map((_, i) => (
                 <View
                   key={i}
                   style={[
-                    styles.dot,
-                    { backgroundColor: i === featureIndex ? colors.text : colors.border },
-                    i === featureIndex && styles.dotActive,
+                    styles.heroDot,
+                    { backgroundColor: i === heroIndex ? '#FFFFFF' : 'rgba(255,255,255,0.4)' },
+                    i === heroIndex && styles.heroDotActive,
                   ]}
                 />
               ))}
             </View>
           </View>
+          <SafeAreaView edges={['top']} style={styles.heroTopBar}>
+            <View style={styles.logoBadge}>
+              <Leaf size={16} color="#FFFFFF" strokeWidth={2.5} />
+            </View>
+            <Text style={styles.logoLabel}>NutriUZ</Text>
+          </SafeAreaView>
+        </Animated.View>
+
+        <Animated.View style={[styles.contentSection, {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideUp }],
+        }]}>
+          <Text style={[styles.welcomeTitle, { color: colors.text }]}>{tr('login', 'welcome')}</Text>
+          <Text style={[styles.welcomeDesc, { color: colors.textSecondary }]}>
+            {tr('login', 'appDescription')}
+          </Text>
+
+          <View style={styles.featuresGrid}>
+            {FEATURES.map((feature, i) => {
+              const IconComp = feature.icon;
+              return (
+                <Animated.View
+                  key={i}
+                  style={[
+                    styles.featureItem,
+                    {
+                      opacity: featureAnims[i],
+                      transform: [{ translateY: featureAnims[i].interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
+                    },
+                  ]}
+                >
+                  <View style={[styles.featureIconCircle, { backgroundColor: feature.bgColor }]}>
+                    <IconComp size={18} color={feature.color} strokeWidth={2} />
+                  </View>
+                  <Text style={[styles.featureLabel, { color: colors.text }]} numberOfLines={1}>
+                    {getFeatureTitle(feature)}
+                  </Text>
+                </Animated.View>
+              );
+            })}
+          </View>
 
           <View style={styles.formSection}>
-            <View style={[styles.segmentControl, { backgroundColor: isDark ? colors.surfaceSecondary : '#F0F0F2' }]}>
+            <View style={[styles.segmentControl, { backgroundColor: isDark ? colors.surfaceSecondary : '#EEEEF0' }]}>
               <TouchableOpacity
                 style={[
                   styles.segmentBtn,
@@ -531,7 +541,7 @@ export default function LoginScreen() {
                 activeOpacity={0.7}
                 testID="tab-phone"
               >
-                <Phone size={14} color={activeTab === 'phone' ? colors.text : colors.textTertiary} style={{ marginRight: 5 }} />
+                <Phone size={14} color={activeTab === 'phone' ? colors.primary : colors.textTertiary} style={{ marginRight: 6 }} />
                 <Text style={[
                   styles.segmentText,
                   { color: activeTab === 'phone' ? colors.text : colors.textTertiary },
@@ -549,7 +559,7 @@ export default function LoginScreen() {
                 activeOpacity={0.7}
                 testID="tab-email"
               >
-                <Mail size={14} color={activeTab === 'email' ? colors.text : colors.textTertiary} style={{ marginRight: 5 }} />
+                <Mail size={14} color={activeTab === 'email' ? colors.primary : colors.textTertiary} style={{ marginRight: 6 }} />
                 <Text style={[
                   styles.segmentText,
                   { color: activeTab === 'email' ? colors.text : colors.textTertiary },
@@ -567,8 +577,8 @@ export default function LoginScreen() {
                     style={[
                       styles.countryBtn,
                       {
-                        backgroundColor: isDark ? colors.surface : '#F8F8FA',
-                        borderColor: inputFocused ? colors.text : (isDark ? colors.border : '#E8E8EC'),
+                        backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                        borderColor: inputFocused ? colors.primary : (isDark ? colors.border : '#E5E5EA'),
                       },
                     ]}
                     onPress={() => {
@@ -586,8 +596,8 @@ export default function LoginScreen() {
                     style={[
                       styles.phoneInput,
                       {
-                        backgroundColor: isDark ? colors.surface : '#F8F8FA',
-                        borderColor: inputFocused ? colors.text : (isDark ? colors.border : '#E8E8EC'),
+                        backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                        borderColor: inputFocused ? colors.primary : (isDark ? colors.border : '#E5E5EA'),
                         color: colors.text,
                       },
                       error ? { borderColor: colors.danger } : null,
@@ -607,8 +617,8 @@ export default function LoginScreen() {
                   style={[
                     styles.emailInput,
                     {
-                      backgroundColor: isDark ? colors.surface : '#F8F8FA',
-                      borderColor: inputFocused ? colors.text : (isDark ? colors.border : '#E8E8EC'),
+                      backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                      borderColor: inputFocused ? colors.primary : (isDark ? colors.border : '#E5E5EA'),
                       color: colors.text,
                     },
                     error ? { borderColor: colors.danger } : null,
@@ -633,8 +643,7 @@ export default function LoginScreen() {
               <TouchableOpacity
                 style={[
                   styles.sendBtn,
-                  { backgroundColor: isDark ? '#FFFFFF' : accentColor },
-                  (!isInputValid || isLoading) && { opacity: 0.35 },
+                  (!isInputValid || isLoading) && { opacity: 0.4 },
                 ]}
                 onPress={handleSendCode}
                 onPressIn={handleButtonPressIn}
@@ -643,23 +652,30 @@ export default function LoginScreen() {
                 activeOpacity={0.8}
                 testID="send-code-button"
               >
-                {isLoading ? (
-                  <ActivityIndicator size="small" color={isDark ? '#000000' : '#FFFFFF'} />
-                ) : (
-                  <Text style={[styles.sendBtnText, { color: isDark ? '#000000' : '#FFFFFF' }]}>
-                    {tr('login', 'sendCode')}
-                  </Text>
-                )}
+                <LinearGradient
+                  colors={['#0B8F6C', '#079E76']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.sendBtnGradient}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.sendBtnText}>
+                      {tr('login', 'sendCode')}
+                    </Text>
+                  )}
+                </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
 
             <View style={styles.termsRow}>
-              <Lock size={11} color={colors.textTertiary} />
+              <Shield size={11} color={colors.textTertiary} />
               <Text style={[styles.termsText, { color: colors.textTertiary }]}>{tr('login', 'termsText')}</Text>
             </View>
           </View>
-        </ScrollView>
-      </SafeAreaView>
+        </Animated.View>
+      </ScrollView>
     </Animated.View>
   );
 
@@ -681,15 +697,18 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <View style={styles.otpHeader}>
-            <View style={[styles.otpIconWrap, { backgroundColor: isDark ? colors.surfaceSecondary : '#F0F0F2' }]}>
-              <Lock size={24} color={colors.text} strokeWidth={1.5} />
+            <View style={[styles.otpIconWrap, { backgroundColor: colors.primary + '15' }]}>
+              <Lock size={26} color={colors.primary} strokeWidth={1.8} />
             </View>
             <Text style={[styles.otpTitle, { color: colors.text }]}>{tr('login', 'otpTitle')}</Text>
             <Text style={[styles.otpSubtitle, { color: colors.textSecondary }]}>
               {tr('login', 'otpSubtitle').replace('{target}', '')}
             </Text>
-            <View style={[styles.identifierChip, { backgroundColor: isDark ? colors.surfaceSecondary : '#F0F0F2' }]}>
-              <Text style={[styles.identifierText, { color: colors.text }]}>{currentIdentifier}</Text>
+            <View style={[styles.identifierChip, {
+              backgroundColor: isDark ? colors.surfaceSecondary : colors.primary + '0C',
+              borderColor: colors.primary + '20',
+            }]}>
+              <Text style={[styles.identifierText, { color: colors.primary }]}>{currentIdentifier}</Text>
             </View>
           </View>
 
@@ -705,10 +724,10 @@ export default function LoginScreen() {
                     {
                       borderColor: boxStyle.borderColor,
                       backgroundColor: boxStyle.backgroundColor,
-                      color: colors.text,
+                      color: otpSuccess ? '#34C759' : colors.text,
                     },
                     focusedOtpIndex === index && !otpSuccess && !error && {
-                      borderColor: colors.text,
+                      borderColor: colors.primary,
                       borderWidth: 2,
                     },
                   ]}
@@ -729,7 +748,7 @@ export default function LoginScreen() {
 
           {isVerifying && (
             <View style={styles.verifyingRow}>
-              <ActivityIndicator size="small" color={colors.textSecondary} />
+              <ActivityIndicator size="small" color={colors.primary} />
               <Text style={[styles.verifyingText, { color: colors.textSecondary }]}>{tr('login', 'verifying')}</Text>
             </View>
           )}
@@ -772,13 +791,7 @@ export default function LoginScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Animated.View style={{
-          flex: 1,
-          opacity: fadeAnim,
-          transform: [{ translateY: slideUp }],
-        }}>
-          {step === 'input' ? renderInputStep() : renderOTPStep()}
-        </Animated.View>
+        {step === 'input' ? renderInputStep() : renderOTPStep()}
       </KeyboardAvoidingView>
 
       <Modal
@@ -850,105 +863,117 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  inputScrollContent: {
+  scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 28,
-    justifyContent: 'center',
-    paddingBottom: 20,
   },
-  headerSection: {
+  heroSection: {
+    height: SCREEN_HEIGHT * 0.38,
+    position: 'relative' as const,
+    overflow: 'hidden',
+  },
+  heroImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.38,
+  },
+  heroGradient: {
+    position: 'absolute' as const,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+  },
+  heroOverlay: {
+    position: 'absolute' as const,
+    bottom: 16,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    marginBottom: 28,
   },
-  logoWrap: {
-    marginBottom: 16,
+  heroDots: {
+    flexDirection: 'row',
+    gap: 6,
   },
-  logoBox: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+  heroDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  heroDotActive: {
+    width: 20,
+    borderRadius: 3,
+  },
+  heroTopBar: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  logoBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: 'rgba(11, 143, 108, 0.85)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 8,
   },
-  appName: {
+  logoLabel: {
     fontSize: 17,
-    fontWeight: '600' as const,
-    letterSpacing: 0.5,
-    marginBottom: 20,
-    opacity: 0.5,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  contentSection: {
+    paddingHorizontal: 24,
+    marginTop: -8,
   },
   welcomeTitle: {
-    fontSize: 30,
-    fontWeight: '700' as const,
-    letterSpacing: -0.8,
-    textAlign: 'center',
-    marginBottom: 8,
+    fontSize: 28,
+    fontWeight: '800' as const,
+    letterSpacing: -0.6,
+    marginBottom: 6,
   },
   welcomeDesc: {
     fontSize: 15,
     lineHeight: 21,
+    marginBottom: 24,
+  },
+  featuresGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 28,
+  },
+  featureItem: {
+    alignItems: 'center',
+    width: (SCREEN_WIDTH - 48 - 36) / 4,
+  },
+  featureIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  featureLabel: {
+    fontSize: 11,
+    fontWeight: '600' as const,
     textAlign: 'center',
   },
-  featuresSection: {
-    marginBottom: 32,
-    marginHorizontal: -28,
-    paddingHorizontal: 4,
-  },
-  featureSlide: {
-    paddingHorizontal: 28,
-  },
-  featureCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-  },
-  featureIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  featureTextWrap: {
-    flex: 1,
-  },
-  featureTitle: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    marginBottom: 2,
-  },
-  featureDesc: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  dotsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 5,
-    marginTop: 14,
-  },
-  dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-  },
-  dotActive: {
-    width: 18,
-    borderRadius: 2.5,
-  },
   formSection: {
-    paddingBottom: 8,
+    paddingBottom: 24,
   },
   segmentControl: {
     flexDirection: 'row',
     borderRadius: 12,
     padding: 3,
-    marginBottom: 18,
+    marginBottom: 16,
   },
   segmentBtn: {
     flex: 1,
@@ -961,9 +986,9 @@ const styles = StyleSheet.create({
   segmentBtnActive: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
   segmentText: {
     fontSize: 13,
@@ -980,10 +1005,10 @@ const styles = StyleSheet.create({
   countryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
-    height: 50,
+    borderRadius: 14,
+    height: 52,
     paddingHorizontal: 10,
-    borderWidth: 1,
+    borderWidth: 1.2,
     gap: 4,
   },
   flagText: {
@@ -995,18 +1020,18 @@ const styles = StyleSheet.create({
   },
   phoneInput: {
     flex: 1,
-    borderRadius: 12,
-    height: 50,
+    borderRadius: 14,
+    height: 52,
     paddingHorizontal: 14,
     fontSize: 16,
-    borderWidth: 1,
+    borderWidth: 1.2,
   },
   emailInput: {
-    borderRadius: 12,
-    height: 50,
+    borderRadius: 14,
+    height: 52,
     paddingHorizontal: 16,
     fontSize: 16,
-    borderWidth: 1,
+    borderWidth: 1.2,
     marginBottom: 12,
   },
   errorText: {
@@ -1015,14 +1040,20 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
   sendBtn: {
-    height: 50,
-    borderRadius: 12,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  sendBtnGradient: {
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 14,
   },
   sendBtnText: {
     fontSize: 16,
-    fontWeight: '600' as const,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
   },
   termsRow: {
     flexDirection: 'row',
@@ -1042,9 +1073,9 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 28,
@@ -1054,16 +1085,16 @@ const styles = StyleSheet.create({
     marginBottom: 36,
   },
   otpIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 64,
+    height: 64,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 18,
+    marginBottom: 20,
   },
   otpTitle: {
     fontSize: 26,
-    fontWeight: '700' as const,
+    fontWeight: '800' as const,
     letterSpacing: -0.5,
     marginBottom: 6,
   },
@@ -1071,12 +1102,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   identifierChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
   },
   identifierText: {
     fontSize: 14,
@@ -1090,11 +1122,11 @@ const styles = StyleSheet.create({
   },
   otpBox: {
     width: (SCREEN_WIDTH - 56 - 40) / 6,
-    height: 52,
-    borderRadius: 12,
+    height: 56,
+    borderRadius: 14,
     borderWidth: 1.5,
     textAlign: 'center',
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700' as const,
   },
   verifyingRow: {
@@ -1121,7 +1153,7 @@ const styles = StyleSheet.create({
   },
   resendText: {
     fontSize: 14,
-    fontWeight: '500' as const,
+    fontWeight: '600' as const,
   },
   successOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1130,12 +1162,17 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   successCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: '#34C759',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#34C759',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   modalOverlay: {
     flex: 1,
