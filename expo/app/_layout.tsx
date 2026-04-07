@@ -10,7 +10,19 @@ import { AuthProvider } from "@/contexts/AuthContext";
 
 void SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      retryDelay: 3000,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+    },
+    mutations: {
+      retry: 0,
+    },
+  },
+});
 
 function RootLayoutNav() {
   const { colors } = useTheme();

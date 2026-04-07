@@ -259,7 +259,11 @@ export default function LoginScreen() {
     } catch (err: unknown) {
       console.error('[Login] Send code error:', err);
       const errMsg = err instanceof Error ? err.message : tr('common', 'error');
-      setError(errMsg);
+      if (errMsg === 'SERVER_UNAVAILABLE') {
+        setError(tr('login', 'serverUnavailable') || 'Server bilan bog\'lanib bo\'lmadi. Keyinroq urinib ko\'ring.');
+      } else {
+        setError(errMsg);
+      }
     } finally {
       setIsLoading(false);
     }

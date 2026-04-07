@@ -3,6 +3,19 @@ import { UserProfile, MealEntry, WeightEntry, UnlockedAchievement, ProgressPhoto
 
 const API_BASE_URL = 'https://68bafc6d1e302.myxvest1.ru/Fitnes/api';
 
+const FETCH_TIMEOUT_MS = 10000;
+
+async function fetchWithTimeout(url: string, config: RequestInit, timeoutMs: number = FETCH_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...config, signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 const TOKEN_KEY = 'nutriuz_api_token';
 const AUTH_KEY = 'nutriuz_auth';
 
@@ -130,7 +143,7 @@ async function apiRequest<T>(
   console.log(`[API] ${method} ${url}`);
 
   try {
-    const response = await fetch(url, config);
+    const response = await fetchWithTimeout(url, config);
     const json = await response.json() as ApiResponse<T>;
 
     if (!response.ok) {
@@ -141,35 +154,64 @@ async function apiRequest<T>(
     console.log(`[API] Response:`, JSON.stringify(json).substring(0, 200));
     return json;
   } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      console.log(`[API] Request timed out: ${url}`);
+      throw new Error('REQUEST_TIMEOUT');
+    }
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      console.log(`[API] Network error (server unreachable): ${url}`);
+      throw new Error('NETWORK_ERROR');
+    }
     console.error(`[API] Request failed:`, error);
     throw error;
   }
 }
 
+export function isNetworkError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return error.message === 'NETWORK_ERROR' || error.message === 'REQUEST_TIMEOUT' || error.message === 'Failed to fetch';
+  }
+  return false;
+}
+
 export const authApi = {
   sendCode: async (method: 'email' | 'phone', identifier: string) => {
-    const res = await apiRequest<{ message: string }>('/auth/send-code', {
-      method: 'POST',
-      body: { method, identifier },
-      requireAuth: false,
-    });
-    return res.data!;
+    try {
+      const res = await apiRequest<{ message: string }>('/auth/send-code', {
+        method: 'POST',
+        body: { method, identifier },
+        requireAuth: false,
+      });
+      return res.data!;
+    } catch (error) {
+      if (isNetworkError(error)) {
+        throw new Error('SERVER_UNAVAILABLE');
+      }
+      throw error;
+    }
   },
 
   verifyCode: async (method: 'email' | 'phone', identifier: string, code: string) => {
-    const res = await apiRequest<{
-      token: string;
-      isNewUser: boolean;
-      profile: UserProfile | null;
-    }>('/auth/verify-code', {
-      method: 'POST',
-      body: { method, identifier, code },
-      requireAuth: false,
-    });
-    if (res.data?.token) {
-      await setToken(res.data.token);
+    try {
+      const res = await apiRequest<{
+        token: string;
+        isNewUser: boolean;
+        profile: UserProfile | null;
+      }>('/auth/verify-code', {
+        method: 'POST',
+        body: { method, identifier, code },
+        requireAuth: false,
+      });
+      if (res.data?.token) {
+        await setToken(res.data.token);
+      }
+      return res.data!;
+    } catch (error) {
+      if (isNetworkError(error)) {
+        throw new Error('SERVER_UNAVAILABLE');
+      }
+      throw error;
     }
-    return res.data!;
   },
 
   logout: async () => {
