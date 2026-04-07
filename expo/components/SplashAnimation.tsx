@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, Animated, StyleSheet, Dimensions, Platform } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
 const NATIVE = Platform.OS !== 'web';
@@ -9,6 +10,7 @@ interface SplashAnimationProps {
 }
 
 export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
+  const { isDark, colors } = useTheme();
   const containerOpacity = useRef(new Animated.Value(1)).current;
 
   const letterAnims = useRef(
@@ -133,14 +135,42 @@ export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
 
   const letters = 'Oqsil'.split('');
 
+  const themedStyles = useMemo(() => ({
+    container: {
+      backgroundColor: isDark ? '#050506' : '#F5F5F7',
+    },
+    bgGradientTop: {
+      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.04)' : 'rgba(11, 143, 108, 0.04)',
+    },
+    bgGradientBottom: {
+      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.025)' : 'rgba(11, 143, 108, 0.025)',
+    },
+    glowOrb: {
+      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.08)' : 'rgba(11, 143, 108, 0.08)',
+    },
+    letter: {
+      color: isDark ? '#E8ECE9' : '#1D1D1F',
+    },
+    firstLetter: {
+      color: isDark ? '#34D399' : '#0B8F6C',
+    },
+    accentLine: {
+      backgroundColor: isDark ? '#34D399' : '#0B8F6C',
+    },
+    tagline: {
+      color: isDark ? 'rgba(232, 236, 233, 0.4)' : 'rgba(29, 29, 31, 0.35)',
+    },
+  }), [isDark]);
+
   return (
-    <Animated.View style={[styles.container, { opacity: containerOpacity }]} pointerEvents="none">
-      <View style={styles.bgGradientTop} />
-      <View style={styles.bgGradientBottom} />
+    <Animated.View style={[styles.container, themedStyles.container, { opacity: containerOpacity }]} pointerEvents="none">
+      <View style={[styles.bgGradientTop, themedStyles.bgGradientTop]} />
+      <View style={[styles.bgGradientBottom, themedStyles.bgGradientBottom]} />
 
       <Animated.View
         style={[
           styles.glowOrb,
+          themedStyles.glowOrb,
           {
             opacity: glowOpacity,
             transform: [{ scale: glowScale }],
@@ -155,7 +185,8 @@ export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
               key={i}
               style={[
                 styles.letter,
-                i === 0 && styles.firstLetter,
+                themedStyles.letter,
+                i === 0 && [styles.firstLetter, themedStyles.firstLetter],
                 {
                   opacity: letterAnims[i].opacity,
                   transform: [{ translateY: letterAnims[i].translateY }],
@@ -171,6 +202,7 @@ export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
           <Animated.View
             style={[
               styles.accentLine,
+              themedStyles.accentLine,
               {
                 opacity: lineOpacity,
                 transform: [{ scaleX: lineWidth }],
@@ -182,6 +214,7 @@ export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
         <Animated.Text
           style={[
             styles.tagline,
+            themedStyles.tagline,
             {
               opacity: taglineOpacity,
               transform: [{ translateY: taglineTranslateY }],
@@ -198,7 +231,6 @@ export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#050506',
     zIndex: 9999,
     justifyContent: 'center',
     alignItems: 'center',
@@ -210,7 +242,6 @@ const styles = StyleSheet.create({
     width: width * 1.6,
     height: height * 0.5,
     borderRadius: height * 0.25,
-    backgroundColor: 'rgba(16, 185, 129, 0.04)',
   },
   bgGradientBottom: {
     position: 'absolute',
@@ -219,14 +250,12 @@ const styles = StyleSheet.create({
     width: width * 1.2,
     height: height * 0.4,
     borderRadius: height * 0.2,
-    backgroundColor: 'rgba(16, 185, 129, 0.025)',
   },
   glowOrb: {
     position: 'absolute',
     width: 220,
     height: 220,
     borderRadius: 110,
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
   },
   center: {
     alignItems: 'center',
@@ -238,12 +267,10 @@ const styles = StyleSheet.create({
   letter: {
     fontSize: 52,
     fontWeight: '300' as const,
-    color: '#E8ECE9',
     letterSpacing: 2,
   },
   firstLetter: {
     fontWeight: '600' as const,
-    color: '#34D399',
     fontSize: 56,
   },
   lineContainer: {
@@ -256,13 +283,11 @@ const styles = StyleSheet.create({
     width: 48,
     height: 2,
     borderRadius: 1,
-    backgroundColor: '#34D399',
   },
   tagline: {
     marginTop: 16,
     fontSize: 14,
     fontWeight: '400' as const,
-    color: 'rgba(232, 236, 233, 0.4)',
     letterSpacing: 1.5,
     textTransform: 'uppercase' as const,
   },
