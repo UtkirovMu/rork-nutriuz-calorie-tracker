@@ -343,6 +343,7 @@ const translations = {
     changeMethod: { uz: 'Boshqa usul', ru: 'Изменить способ', en: 'Change method' },
     sendCode: { uz: 'Kod yuborish', ru: 'Отправить код', en: 'Send Code' },
     sendingCode: { uz: 'Kod yuborilmoqda...', ru: 'Отправка кода...', en: 'Sending code...' },
+    spamWarning: { uz: 'Kod spam bo\'limiga tushishi mumkin, iltimos tekshiring', ru: 'Код может попасть в спам, пожалуйста проверьте', en: 'Code may end up in spam folder, please check' },
   },
   settings: {
     title: { uz: 'Sozlamalar', ru: 'Настройки', en: 'Settings' },

@@ -757,6 +757,15 @@ export default function LoginScreen() {
             <Text style={[styles.otpError, { color: colors.danger }]}>{error}</Text>
           ) : null}
 
+          {activeTab === 'email' && (
+            <View style={[styles.spamWarning, { backgroundColor: '#FF9500' + '15', borderColor: '#FF9500' + '30' }]}>
+              <Mail size={14} color="#FF9500" />
+              <Text style={[styles.spamWarningText, { color: '#FF9500' }]}>
+                {tr('login', 'spamWarning')}
+              </Text>
+            </View>
+          )}
+
           <TouchableOpacity
             onPress={handleResendCode}
             disabled={resendTimer > 0 || isLoading || isVerifying}
@@ -1154,6 +1163,22 @@ const styles = StyleSheet.create({
   resendText: {
     fontSize: 14,
     fontWeight: '600' as const,
+  },
+  spamWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  spamWarningText: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    flex: 1,
+    lineHeight: 16,
   },
   successOverlay: {
     ...StyleSheet.absoluteFillObject,
