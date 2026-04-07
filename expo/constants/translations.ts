@@ -117,7 +117,7 @@ const translations = {
     macroDistribution: { uz: 'Makronutrient taqsimoti (bugun)', ru: 'Распределение макронутриентов (сегодня)', en: 'Macronutrient distribution (today)' },
   },
   chat: {
-    title: { uz: 'NutriUZ AI', ru: 'NutriUZ AI', en: 'NutriUZ AI' },
+    title: { uz: 'Oqsil AI', ru: 'Oqsil AI', en: 'Oqsil AI' },
     typing: { uz: 'yozmoqda...', ru: 'печатает...', en: 'typing...' },
     online: { uz: 'onlayn', ru: 'онлайн', en: 'online' },
     advisor: { uz: 'maslahatchi', ru: 'консультант', en: 'advisor' },

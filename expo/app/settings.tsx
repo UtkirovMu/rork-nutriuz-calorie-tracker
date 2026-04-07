@@ -235,7 +235,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={ds.versionText}>NutriUZ v1.0.0</Text>
+        <Text style={ds.versionText}>Oqsil v1.0.0</Text>
       </Animated.ScrollView>
     </View>
   );

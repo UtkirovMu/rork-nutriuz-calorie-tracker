@@ -437,7 +437,7 @@ export default function ChatScreen() {
 
     const weeksToGoal = weightDiffAbs > 0 ? Math.ceil(weightDiffAbs / 0.5) : 0;
 
-    return `Sen NutriUZ ilovasining professional AI ovqatlanish maslahatchisisan. Foydalanuvchiga faqat o'zbek tilida javob berasan. Sen dietolog va nutritsiolog sifatida maslahat berasan.
+    return `Sen Oqsil ilovasining professional AI ovqatlanish maslahatchisisan. Foydalanuvchiga faqat o'zbek tilida javob berasan. Sen dietolog va nutritsiolog sifatida maslahat berasan.
 
 === FOYDALANUVCHI PROFILI ===
 Ism: ${profile.name || 'Noma\'lum'}

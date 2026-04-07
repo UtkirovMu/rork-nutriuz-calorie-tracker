@@ -770,7 +770,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          <Text style={ds.versionText}>NutriUZ v1.0.0</Text>
+          <Text style={ds.versionText}>Oqsil v1.0.0</Text>
         </Animated.ScrollView>
       </SafeAreaView>
     </View>

@@ -106,7 +106,7 @@ export default function AdBanner() {
           </View>
 
           <Text style={[styles.title, { color: colors.text }]}>
-            NutriUZ Premium
+            Oqsil Premium
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             {tr('login', 'appDescription')}

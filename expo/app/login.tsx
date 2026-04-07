@@ -492,7 +492,7 @@ export default function LoginScreen() {
             <View style={styles.logoBadge}>
               <Leaf size={16} color="#FFFFFF" strokeWidth={2.5} />
             </View>
-            <Text style={styles.logoLabel}>NutriUZ</Text>
+            <Text style={styles.logoLabel}>Oqsil</Text>
           </SafeAreaView>
         </Animated.View>
 
