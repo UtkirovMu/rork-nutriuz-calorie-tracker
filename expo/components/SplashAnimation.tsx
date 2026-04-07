@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, Animated, StyleSheet, Dimensions, Platform } from 'react-native';
+import { View, Animated, StyleSheet, Dimensions, Platform, Text } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
@@ -10,13 +10,16 @@ interface SplashAnimationProps {
 }
 
 export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
-  const { isDark, colors } = useTheme();
+  const { isDark } = useTheme();
   const containerOpacity = useRef(new Animated.Value(1)).current;
 
+  // Har bir harf uchun alohida animatsiya
+  const letters = 'Oqsil'.split('');
   const letterAnims = useRef(
-    'Oqsil'.split('').map(() => ({
+    letters.map(() => ({
       opacity: new Animated.Value(0),
-      translateY: new Animated.Value(30),
+      translateY: new Animated.Value(40),
+      scale: new Animated.Value(0.5),
     }))
   ).current;
 
@@ -24,149 +27,139 @@ export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
   const lineOpacity = useRef(new Animated.Value(0)).current;
 
   const glowOpacity = useRef(new Animated.Value(0)).current;
-  const glowScale = useRef(new Animated.Value(0.6)).current;
+  const glowScale = useRef(new Animated.Value(0.4)).current;
 
   const taglineOpacity = useRef(new Animated.Value(0)).current;
-  const taglineTranslateY = useRef(new Animated.Value(8)).current;
+  const taglineTranslateY = useRef(new Animated.Value(15)).current;
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  const animRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const handleFinish = useCallback(() => {
     onFinish();
   }, [onFinish]);
 
   useEffect(() => {
+    // Harflarning ketma-ket chiqishi
     const letterEntries = letterAnims.map((anim, i) =>
       Animated.parallel([
         Animated.timing(anim.opacity, {
           toValue: 1,
-          duration: 220,
-          delay: i * 90,
+          duration: 300,
+          delay: i * 100,
           useNativeDriver: NATIVE,
         }),
         Animated.spring(anim.translateY, {
           toValue: 0,
-          tension: 120,
-          friction: 12,
-          delay: i * 90,
+          tension: 100,
+          friction: 8,
+          delay: i * 100,
+          useNativeDriver: NATIVE,
+        }),
+        Animated.spring(anim.scale, {
+          toValue: 1,
+          tension: 100,
+          friction: 7,
+          delay: i * 100,
           useNativeDriver: NATIVE,
         }),
       ])
     );
 
     const animation = Animated.sequence([
+      // 1. Orqa fondagi "Aura" (Glow) chiqishi
       Animated.parallel([
         Animated.timing(glowOpacity, {
-          toValue: 0.4,
-          duration: 600,
+          toValue: 1,
+          duration: 800,
           useNativeDriver: NATIVE,
         }),
         Animated.spring(glowScale, {
-          toValue: 1,
-          tension: 40,
+          toValue: 1.2,
+          tension: 20,
           friction: 10,
           useNativeDriver: NATIVE,
         }),
       ]),
 
+      // 2. Harflarning animatsiyasi
       Animated.parallel(letterEntries),
 
+      // 3. Chiziq va Tagline
       Animated.parallel([
         Animated.timing(lineOpacity, {
           toValue: 1,
-          duration: 200,
+          duration: 300,
           useNativeDriver: NATIVE,
         }),
         Animated.spring(lineWidth, {
           toValue: 1,
-          tension: 60,
-          friction: 12,
+          tension: 50,
+          friction: 10,
           useNativeDriver: NATIVE,
         }),
-      ]),
-
-      Animated.parallel([
         Animated.timing(taglineOpacity, {
           toValue: 1,
-          duration: 400,
+          duration: 500,
           useNativeDriver: NATIVE,
         }),
         Animated.spring(taglineTranslateY, {
           toValue: 0,
-          tension: 80,
-          friction: 12,
+          tension: 50,
+          friction: 10,
           useNativeDriver: NATIVE,
         }),
       ]),
 
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.04,
-          duration: 300,
+      // 4. Yakuniy pulsatsiya va g'oyib bo'lish
+      Animated.delay(500),
+      Animated.parallel([
+        Animated.timing(containerOpacity, {
+          toValue: 0,
+          duration: 600,
           useNativeDriver: NATIVE,
         }),
         Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 300,
+          toValue: 1.1,
+          duration: 600,
           useNativeDriver: NATIVE,
         }),
       ]),
-
-      Animated.delay(250),
-
-      Animated.timing(containerOpacity, {
-        toValue: 0,
-        duration: 400,
-        useNativeDriver: NATIVE,
-      }),
     ]);
 
-    animRef.current = animation;
     animation.start(({ finished }) => {
       if (finished) handleFinish();
     });
 
-    return () => {
-      animRef.current?.stop();
-    };
+    return () => animation.stop();
   }, [handleFinish]);
-
-  const letters = 'Oqsil'.split('');
 
   const themedStyles = useMemo(() => ({
     container: {
-      backgroundColor: isDark ? '#050506' : '#F5F5F7',
-    },
-    bgGradientTop: {
-      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.04)' : 'rgba(11, 143, 108, 0.04)',
-    },
-    bgGradientBottom: {
-      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.025)' : 'rgba(11, 143, 108, 0.025)',
+      backgroundColor: isDark ? '#050506' : '#FFFFFF',
     },
     glowOrb: {
-      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.08)' : 'rgba(11, 143, 108, 0.08)',
+      backgroundColor: isDark ? 'rgba(34, 197, 94, 0.12)' : 'rgba(34, 197, 94, 0.08)',
     },
     letter: {
-      color: isDark ? '#E8ECE9' : '#1D1D1F',
+      color: isDark ? '#F8FAFC' : '#0F172A',
     },
-    firstLetter: {
-      color: isDark ? '#34D399' : '#0B8F6C',
+    brandLetter: {
+      color: '#22c55e', // Oqsil Brand Green
     },
     accentLine: {
-      backgroundColor: isDark ? '#34D399' : '#0B8F6C',
+      backgroundColor: '#22c55e',
     },
     tagline: {
-      color: isDark ? 'rgba(232, 236, 233, 0.4)' : 'rgba(29, 29, 31, 0.35)',
+      color: isDark ? '#64748B' : '#94A3B8',
     },
   }), [isDark]);
 
   return (
-    <Animated.View style={[styles.container, themedStyles.container, { opacity: containerOpacity }]} pointerEvents="none">
-      <View style={[styles.bgGradientTop, themedStyles.bgGradientTop]} />
-      <View style={[styles.bgGradientBottom, themedStyles.bgGradientBottom]} />
-
+    <Animated.View 
+      style={[styles.container, themedStyles.container, { opacity: containerOpacity }]} 
+      pointerEvents="none"
+    >
+      {/* Orqa fondagi sog'lom muhit aurasi */}
       <Animated.View
         style={[
           styles.glowOrb,
@@ -186,10 +179,13 @@ export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
               style={[
                 styles.letter,
                 themedStyles.letter,
-                i === 0 && [styles.firstLetter, themedStyles.firstLetter],
+                i === 0 && themedStyles.brandLetter, // "O" harfi brend rangida
                 {
                   opacity: letterAnims[i].opacity,
-                  transform: [{ translateY: letterAnims[i].translateY }],
+                  transform: [
+                    { translateY: letterAnims[i].translateY },
+                    { scale: letterAnims[i].scale }
+                  ],
                 },
               ]}
             >
@@ -198,6 +194,7 @@ export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
           ))}
         </View>
 
+        {/* Dekorativ chiziq */}
         <View style={styles.lineContainer}>
           <Animated.View
             style={[
@@ -211,6 +208,7 @@ export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
           />
         </View>
 
+        {/* Tagline */}
         <Animated.Text
           style={[
             styles.tagline,
@@ -221,7 +219,7 @@ export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
             },
           ]}
         >
-          Sog'lom ovqatlanish yordamchisi
+          AI Dietolog & Sog'lom hayot
         </Animated.Text>
       </Animated.View>
     </Animated.View>
@@ -235,27 +233,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  bgGradientTop: {
-    position: 'absolute',
-    top: -height * 0.2,
-    left: -width * 0.3,
-    width: width * 1.6,
-    height: height * 0.5,
-    borderRadius: height * 0.25,
-  },
-  bgGradientBottom: {
-    position: 'absolute',
-    bottom: -height * 0.15,
-    right: -width * 0.3,
-    width: width * 1.2,
-    height: height * 0.4,
-    borderRadius: height * 0.2,
-  },
   glowOrb: {
     position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
+    width: width * 0.8,
+    height: width * 0.8,
+    borderRadius: width * 0.4,
   },
   center: {
     alignItems: 'center',
@@ -265,30 +247,27 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
   },
   letter: {
-    fontSize: 52,
-    fontWeight: '300' as const,
-    letterSpacing: 2,
-  },
-  firstLetter: {
-    fontWeight: '600' as const,
-    fontSize: 56,
+    fontSize: 64,
+    fontWeight: '800',
+    letterSpacing: -1,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-condensed',
   },
   lineContainer: {
-    marginTop: 14,
-    width: 48,
-    height: 2,
+    marginTop: 10,
+    width: 60,
+    height: 4,
+    borderRadius: 2,
     overflow: 'hidden',
   },
   accentLine: {
-    width: 48,
-    height: 2,
-    borderRadius: 1,
+    width: '100%',
+    height: '100%',
   },
   tagline: {
-    marginTop: 16,
-    fontSize: 14,
-    fontWeight: '400' as const,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase' as const,
+    marginTop: 20,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 3,
+    textTransform: 'uppercase',
   },
 });
