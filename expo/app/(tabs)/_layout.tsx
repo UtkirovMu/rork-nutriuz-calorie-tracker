@@ -1,62 +1,55 @@
-import { Tabs } from "expo-router";
-import { Home, BookOpen, User, MessageCircle, BarChart3 } from "lucide-react-native";
-import React from "react";
-import { useTheme } from "@/contexts/ThemeContext";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { Tabs } from 'expo-router';
+import { Home, UtensilsCrossed, BarChart3, MessageCircle, User } from 'lucide-react-native';
+import React from 'react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function TabLayout() {
   const { colors } = useTheme();
-  const { tr } = useLanguage();
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.tabIconDefault,
+        tabBarInactiveTintColor: colors.textSecondary,
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.borderLight,
-          borderTopWidth: 0.5,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600" as const,
+          backgroundColor: colors.card,
+          borderTopColor: colors.border,
         },
       }}
     >
       <Tabs.Screen
         name="(home)"
         options={{
-          title: tr('tabs', 'home'),
+          title: 'Asosiy',
           tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="log"
         options={{
-          title: tr('tabs', 'log'),
-          tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color} />,
+          title: 'Jurnal',
+          tabBarIcon: ({ color, size }) => <UtensilsCrossed size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="stats"
         options={{
-          title: tr('tabs', 'stats'),
+          title: 'Statistika',
           tabBarIcon: ({ color, size }) => <BarChart3 size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="chat"
         options={{
-          title: tr('tabs', 'chat'),
+          title: 'Chat',
           tabBarIcon: ({ color, size }) => <MessageCircle size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: tr('tabs', 'profile'),
+          title: 'Profil',
           tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
         }}
       />

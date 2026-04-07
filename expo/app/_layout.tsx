@@ -1,58 +1,56 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { UserProvider } from "@/contexts/UserContext";
-import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
-import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
+import { UserProvider } from "@/contexts/UserContext";
+import SplashAnimation from "@/components/SplashAnimation";
 
-void SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  const { colors } = useTheme();
-  const { tr } = useLanguage();
-
   return (
-    <Stack
-      screenOptions={{
-        headerBackTitle: tr('nav', 'back'),
-        headerStyle: { backgroundColor: colors.background },
-        headerTintColor: colors.text,
-        contentStyle: { backgroundColor: colors.background },
-      }}
-    >
+    <Stack screenOptions={{ headerBackTitle: "Orqaga" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="login" options={{ headerShown: false, gestureEnabled: false }} />
-      <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
-      <Stack.Screen name="scanner" options={{ presentation: "modal", headerShown: false }} />
-      <Stack.Screen name="meal-plan" options={{ title: tr('nav', 'mealPlan') }} />
-      <Stack.Screen name="achievements" options={{ title: tr('nav', 'achievements') }} />
-      <Stack.Screen name="progress-photos" options={{ title: tr('nav', 'progressPhotos') }} />
-      <Stack.Screen name="settings" options={{ title: tr('nav', 'settings') }} />
+      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="scanner" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen name="meal-plan" options={{ headerShown: false }} />
+      <Stack.Screen name="settings" options={{ title: "Sozlamalar" }} />
+      <Stack.Screen name="achievements" options={{ title: "Yutuqlar" }} />
+      <Stack.Screen name="progress-photos" options={{ title: "Suratlar" }} />
     </Stack>
   );
 }
 
 export default function RootLayout() {
+  const [showSplash, setShowSplash] = useState(true);
+
   useEffect(() => {
-    void SplashScreen.hideAsync();
+    SplashScreen.hideAsync();
+  }, []);
+
+  const handleSplashFinish = useCallback(() => {
+    setShowSplash(false);
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView>
+      <GestureHandlerRootView style={{ flex: 1 }}>
         <ThemeProvider>
-          <LanguageProvider>
-            <AuthProvider>
+          <AuthProvider>
+            <LanguageProvider>
               <UserProvider>
                 <RootLayoutNav />
+                {showSplash && <SplashAnimation onFinish={handleSplashFinish} />}
               </UserProvider>
-            </AuthProvider>
-          </LanguageProvider>
+            </LanguageProvider>
+          </AuthProvider>
         </ThemeProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>
