@@ -119,12 +119,14 @@ Qisqa va aniq javob ber o'zbek tilida.
   const shouldAnalyze = profile.onboardingComplete && todayMeals.length > 0;
   const hasAnalysis = !!analysisMutation.data;
   const isAnalyzing = analysisMutation.isPending;
+  const analysisRef = useRef(analysisMutation);
+  analysisRef.current = analysisMutation;
 
   useEffect(() => {
     if (shouldAnalyze && !hasAnalysis && !isAnalyzing) {
-      analysisMutation.mutate();
+      analysisRef.current.mutate();
     }
-  }, [shouldAnalyze, hasAnalysis, isAnalyzing, analysisMutation]);
+  }, [shouldAnalyze, hasAnalysis, isAnalyzing]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -135,14 +137,14 @@ Qisqa va aniq javob ber o'zbek tilida.
         queryClient.invalidateQueries({ queryKey: ['streak'] }),
       ]);
       if (todayMeals.length > 0) {
-        analysisMutation.mutate();
+        analysisRef.current.mutate();
       }
     } catch (e) {
       console.log('[Home] Refresh error:', e);
     } finally {
       setRefreshing(false);
     }
-  }, [queryClient, todayMeals.length, analysisMutation]);
+  }, [queryClient, todayMeals.length]);
 
   const handleScan = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

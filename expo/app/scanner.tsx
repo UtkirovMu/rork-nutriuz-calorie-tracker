@@ -972,7 +972,7 @@ const staticStyles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 22,
-    backdropFilter: 'blur(10px)',
+
   },
   retakeText: {
     fontSize: 13,

@@ -170,7 +170,9 @@ export default function LogScreen() {
   };
 
   const toggleCalendar = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (Platform.OS !== 'web') {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    }
     setCalendarExpanded(!calendarExpanded);
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
