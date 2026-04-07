@@ -351,6 +351,22 @@ const translations = {
     profileLabel: { uz: 'Profil', ru: 'Профиль', en: 'Profile' },
     notConfigured: { uz: 'Sozlanmagan', ru: 'Не настроен', en: 'Not configured' },
   },
+  notifications: {
+    title: { uz: 'Bildirishnomalar', ru: 'Уведомления', en: 'Notifications' },
+    enabled: { uz: 'Bildirishnomalar', ru: 'Уведомления', en: 'Notifications' },
+    mealReminders: { uz: 'Ovqat eslatmalari', ru: 'Напоминания о еде', en: 'Meal reminders' },
+    mealRemindersDesc: { uz: 'Nonushta, tushlik va kechki ovqat vaqtida eslatma', ru: 'Напоминания о завтраке, обеде и ужине', en: 'Reminders for breakfast, lunch and dinner' },
+    waterReminders: { uz: 'Suv eslatmalari', ru: 'Напоминания о воде', en: 'Water reminders' },
+    waterRemindersDesc: { uz: 'Kun davomida suv ichishni eslatish', ru: 'Напоминания пить воду в течение дня', en: 'Reminders to drink water throughout the day' },
+    dailySummary: { uz: 'Kunlik hisobot', ru: 'Дневной отчёт', en: 'Daily summary' },
+    dailySummaryDesc: { uz: 'Kechqurun bugungi statistikangiz haqida xabar', ru: 'Вечерний отчёт о вашей статистике за день', en: 'Evening report about your daily stats' },
+    permissionRequired: { uz: 'Bildirishnoma ruxsati kerak', ru: 'Требуется разрешение на уведомления', en: 'Notification permission required' },
+    permissionMsg: { uz: 'Bildirishnomalar uchun sozlamalarda ruxsat bering', ru: 'Разрешите уведомления в настройках', en: 'Please enable notifications in settings' },
+    saved: { uz: 'Sozlamalar saqlandi', ru: 'Настройки сохранены', en: 'Settings saved' },
+    testSent: { uz: 'Test bildirishnoma yuborildi', ru: 'Тестовое уведомление отправлено', en: 'Test notification sent' },
+    testTitle: { uz: 'Oqsil ilovasi', ru: 'Приложение Oqsil', en: 'Oqsil App' },
+    testBody: { uz: 'Bildirishnomalar ishlayapti! 🎉', ru: 'Уведомления работают! 🎉', en: 'Notifications are working! 🎉' },
+  },
 } as const;
 
 export type TranslationKey = keyof typeof translations;

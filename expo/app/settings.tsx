@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useMemo, useRef, useEffect, useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -6,24 +6,68 @@ import {
   TouchableOpacity,
   Animated,
   Alert,
+  Switch,
+  Platform,
 } from 'react-native';
 import { Stack } from 'expo-router';
-import { Sun, Moon, Smartphone, Trash2, Info, Shield, ChevronRight } from 'lucide-react-native';
+import { Sun, Moon, Smartphone, Trash2, Info, Shield, ChevronRight, Bell, BellOff, Utensils, Droplets, BarChart3, Send } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
 import { useUser } from '@/contexts/UserContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import {
+  NotificationSettings,
+  DEFAULT_NOTIFICATION_SETTINGS,
+  loadNotificationSettings,
+  saveNotificationSettings,
+  scheduleMealReminders,
+  registerForPushNotificationsAsync,
+  sendLocalNotification,
+} from '@/utils/notifications';
 
 export default function SettingsScreen() {
   const { colors, themeMode, setMode } = useTheme();
   const { profile } = useUser();
   const { tr } = useLanguage();
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [notifSettings, setNotifSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, [fadeAnim]);
+
+  useEffect(() => {
+    loadNotificationSettings().then(setNotifSettings);
+  }, []);
+
+  const updateNotifSetting = useCallback(async (key: keyof NotificationSettings, value: boolean) => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    if (key === 'enabled' && value && Platform.OS !== 'web') {
+      const token = await registerForPushNotificationsAsync();
+      if (!token) {
+        Alert.alert(tr('notifications', 'permissionRequired'), tr('notifications', 'permissionMsg'));
+        return;
+      }
+    }
+
+    const updated = { ...notifSettings, [key]: value };
+    setNotifSettings(updated);
+    await saveNotificationSettings(updated);
+    await scheduleMealReminders(updated);
+    console.log('[Settings] Notification setting updated:', key, value);
+  }, [notifSettings, tr]);
+
+  const handleTestNotification = useCallback(async () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (Platform.OS === 'web') {
+      Alert.alert(tr('notifications', 'testTitle'), tr('notifications', 'testBody'));
+      return;
+    }
+    await sendLocalNotification(tr('notifications', 'testTitle'), tr('notifications', 'testBody'));
+    Alert.alert(tr('common', 'done'), tr('notifications', 'testSent'));
+  }, [tr]);
 
   const handleThemeChange = useCallback((mode: ThemeMode) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -196,6 +240,85 @@ export default function SettingsScreen() {
               );
             })}
           </View>
+        </View>
+
+        <Text style={ds.sectionTitle}>{tr('notifications', 'title')}</Text>
+        <View style={ds.section}>
+          <View style={ds.settingItem}>
+            <View style={[ds.settingIconWrap, { backgroundColor: notifSettings.enabled ? colors.primaryLight : colors.surfaceSecondary }]}>
+              {notifSettings.enabled ? <Bell size={18} color={colors.primary} /> : <BellOff size={18} color={colors.textTertiary} />}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={ds.settingLabel}>{tr('notifications', 'enabled')}</Text>
+            </View>
+            <Switch
+              value={notifSettings.enabled}
+              onValueChange={(v) => { void updateNotifSetting('enabled', v); }}
+              trackColor={{ false: colors.borderLight, true: colors.primary + '60' }}
+              thumbColor={notifSettings.enabled ? colors.primary : colors.textTertiary}
+            />
+          </View>
+
+          {notifSettings.enabled && (
+            <>
+              <View style={ds.divider} />
+              <View style={ds.settingItem}>
+                <View style={[ds.settingIconWrap, { backgroundColor: colors.caloriesLight }]}>
+                  <Utensils size={18} color={colors.calories} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={ds.settingLabel}>{tr('notifications', 'mealReminders')}</Text>
+                  <Text style={[ds.settingValue, { fontSize: 12, marginTop: 2 }]}>{tr('notifications', 'mealRemindersDesc')}</Text>
+                </View>
+                <Switch
+                  value={notifSettings.mealReminders}
+                  onValueChange={(v) => { void updateNotifSetting('mealReminders', v); }}
+                  trackColor={{ false: colors.borderLight, true: colors.calories + '60' }}
+                  thumbColor={notifSettings.mealReminders ? colors.calories : colors.textTertiary}
+                />
+              </View>
+              <View style={ds.divider} />
+              <View style={ds.settingItem}>
+                <View style={[ds.settingIconWrap, { backgroundColor: colors.fatsLight }]}>
+                  <Droplets size={18} color={colors.fats} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={ds.settingLabel}>{tr('notifications', 'waterReminders')}</Text>
+                  <Text style={[ds.settingValue, { fontSize: 12, marginTop: 2 }]}>{tr('notifications', 'waterRemindersDesc')}</Text>
+                </View>
+                <Switch
+                  value={notifSettings.waterReminders}
+                  onValueChange={(v) => { void updateNotifSetting('waterReminders', v); }}
+                  trackColor={{ false: colors.borderLight, true: colors.fats + '60' }}
+                  thumbColor={notifSettings.waterReminders ? colors.fats : colors.textTertiary}
+                />
+              </View>
+              <View style={ds.divider} />
+              <View style={ds.settingItem}>
+                <View style={[ds.settingIconWrap, { backgroundColor: colors.carbsLight }]}>
+                  <BarChart3 size={18} color={colors.carbs} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={ds.settingLabel}>{tr('notifications', 'dailySummary')}</Text>
+                  <Text style={[ds.settingValue, { fontSize: 12, marginTop: 2 }]}>{tr('notifications', 'dailySummaryDesc')}</Text>
+                </View>
+                <Switch
+                  value={notifSettings.dailySummary}
+                  onValueChange={(v) => { void updateNotifSetting('dailySummary', v); }}
+                  trackColor={{ false: colors.borderLight, true: colors.carbs + '60' }}
+                  thumbColor={notifSettings.dailySummary ? colors.carbs : colors.textTertiary}
+                />
+              </View>
+              <View style={ds.divider} />
+              <TouchableOpacity style={ds.settingItem} onPress={() => { void handleTestNotification(); }} activeOpacity={0.7}>
+                <View style={[ds.settingIconWrap, { backgroundColor: colors.proteinLight }]}>
+                  <Send size={18} color={colors.protein} />
+                </View>
+                <Text style={ds.settingLabel}>Test bildirishnoma</Text>
+                <ChevronRight size={16} color={colors.textTertiary} />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         <Text style={ds.sectionTitle}>{tr('settings', 'account')}</Text>

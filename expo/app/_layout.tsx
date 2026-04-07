@@ -1,13 +1,20 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useRootNavigationState } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useCallback, useEffect, useState } from "react";
+import * as Notifications from "expo-notifications";
+import React, { useCallback, useEffect, useState, useRef } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { UserProvider } from "@/contexts/UserContext";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import { LanguageProvider, useLanguage } from "@/contexts/LanguageContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import SplashAnimation from "@/components/SplashAnimation";
+import {
+  registerForPushNotificationsAsync,
+  loadNotificationSettings,
+  scheduleMealReminders,
+} from "@/utils/notifications";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -50,8 +57,51 @@ function RootLayoutNav() {
   );
 }
 
+function useNotificationSetup() {
+  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+
+    registerForPushNotificationsAsync().then((token) => {
+      if (token) {
+        console.log('[App] Push token registered:', token);
+      }
+    });
+
+    loadNotificationSettings().then((settings) => {
+      if (settings.enabled) {
+        scheduleMealReminders(settings);
+      }
+    });
+
+    notificationListener.current = Notifications.addNotificationReceivedListener(
+      (notification) => {
+        console.log('[App] Notification received:', notification.request.content.title);
+      }
+    );
+
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        console.log('[App] Notification tapped:', response.notification.request.content.title);
+      }
+    );
+
+    return () => {
+      if (notificationListener.current) {
+        Notifications.removeNotificationSubscription(notificationListener.current);
+      }
+      if (responseListener.current) {
+        Notifications.removeNotificationSubscription(responseListener.current);
+      }
+    };
+  }, []);
+}
+
 export default function RootLayout() {
   const [showSplash, setShowSplash] = useState(true);
+  useNotificationSetup();
 
   useEffect(() => {
     void SplashScreen.hideAsync();
