@@ -13,6 +13,7 @@ const THEME_KEY = 'nutriuz_theme_mode';
 export const [ThemeProvider, useTheme] = createContextHook(() => {
   const systemScheme = useColorScheme();
   const [themeMode, setThemeMode] = useState<ThemeMode>('system');
+  const [initialized, setInitialized] = useState(false);
 
   const themeQuery = useQuery({
     queryKey: ['themeMode'],
@@ -25,6 +26,7 @@ export const [ThemeProvider, useTheme] = createContextHook(() => {
   useEffect(() => {
     if (themeQuery.data) {
       setThemeMode(themeQuery.data);
+      setInitialized(true);
     }
   }, [themeQuery.data]);
 
@@ -49,11 +51,11 @@ export const [ThemeProvider, useTheme] = createContextHook(() => {
   }, [saveThemeMutation]);
 
   const isDark = useMemo(() => {
-    if (themeMode === 'system') {
+    if (themeMode === 'system' || !initialized) {
       return systemScheme === 'dark';
     }
     return themeMode === 'dark';
-  }, [themeMode, systemScheme]);
+  }, [themeMode, systemScheme, initialized]);
 
   const colors: ThemeColors = useMemo(() => {
     return isDark ? Colors.dark : Colors.light;

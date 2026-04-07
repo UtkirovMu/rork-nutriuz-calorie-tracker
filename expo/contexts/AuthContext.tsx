@@ -22,6 +22,7 @@ const defaultAuth: AuthData = {
 export const [AuthProvider, useAuth] = createContextHook(() => {
   const queryClient = useQueryClient();
   const [auth, setAuth] = useState<AuthData>(defaultAuth);
+  const [initialized, setInitialized] = useState(false);
 
   const authQuery = useQuery({
     queryKey: ['auth'],
@@ -42,6 +43,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   useEffect(() => {
     if (authQuery.data) {
       setAuth(authQuery.data);
+      setInitialized(true);
     }
   }, [authQuery.data]);
 
@@ -113,7 +115,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     await saveAuthMutation.mutateAsync(defaultAuth);
   }, [saveAuthMutation]);
 
-  const isLoading = authQuery.isLoading;
+  const isLoading = authQuery.isLoading || !initialized;
   const isSendingCode = sendCodeMutation.isPending;
   const isVerifying = verifyCodeMutation.isPending;
   const sendCodeError = sendCodeMutation.error?.message || null;
