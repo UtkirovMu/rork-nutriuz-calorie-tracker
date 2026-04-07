@@ -1,7 +1,9 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, Animated, StyleSheet, Dimensions } from 'react-native';
+import React, { useEffect, useRef, useCallback } from 'react';
+import { View, Text, Animated, StyleSheet, Dimensions, Platform } from 'react-native';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
+
+const NATIVE_DRIVER = Platform.OS !== 'web';
 
 interface SplashAnimationProps {
   onFinish: () => void;
@@ -22,94 +24,108 @@ export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
   const dotScale2 = useRef(new Animated.Value(0)).current;
   const dotScale3 = useRef(new Animated.Value(0)).current;
   const shimmerTranslate = useRef(new Animated.Value(-width)).current;
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  const handleFinish = useCallback(() => {
+    onFinish();
+  }, [onFinish]);
 
   useEffect(() => {
-    const sequence = Animated.sequence([
+    const animation = Animated.sequence([
       Animated.parallel([
         Animated.spring(logoScale, {
           toValue: 1,
           tension: 60,
           friction: 8,
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
         Animated.timing(logoOpacity, {
           toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
+          duration: 500,
+          useNativeDriver: NATIVE_DRIVER,
         }),
       ]),
 
       Animated.parallel([
         Animated.timing(ringScale, {
           toValue: 1.8,
-          duration: 800,
-          useNativeDriver: true,
+          duration: 700,
+          useNativeDriver: NATIVE_DRIVER,
         }),
         Animated.timing(ringOpacity, {
           toValue: 0,
-          duration: 800,
-          useNativeDriver: true,
+          duration: 700,
+          useNativeDriver: NATIVE_DRIVER,
         }),
       ]),
 
-      Animated.stagger(120, [
+      Animated.stagger(100, [
         Animated.parallel([
-          Animated.spring(dotScale1, { toValue: 1, tension: 100, friction: 6, useNativeDriver: true }),
-          Animated.timing(dotOpacity1, { toValue: 1, duration: 200, useNativeDriver: true }),
+          Animated.spring(dotScale1, { toValue: 1, tension: 100, friction: 6, useNativeDriver: NATIVE_DRIVER }),
+          Animated.timing(dotOpacity1, { toValue: 1, duration: 180, useNativeDriver: NATIVE_DRIVER }),
         ]),
         Animated.parallel([
-          Animated.spring(dotScale2, { toValue: 1, tension: 100, friction: 6, useNativeDriver: true }),
-          Animated.timing(dotOpacity2, { toValue: 1, duration: 200, useNativeDriver: true }),
+          Animated.spring(dotScale2, { toValue: 1, tension: 100, friction: 6, useNativeDriver: NATIVE_DRIVER }),
+          Animated.timing(dotOpacity2, { toValue: 1, duration: 180, useNativeDriver: NATIVE_DRIVER }),
         ]),
         Animated.parallel([
-          Animated.spring(dotScale3, { toValue: 1, tension: 100, friction: 6, useNativeDriver: true }),
-          Animated.timing(dotOpacity3, { toValue: 1, duration: 200, useNativeDriver: true }),
+          Animated.spring(dotScale3, { toValue: 1, tension: 100, friction: 6, useNativeDriver: NATIVE_DRIVER }),
+          Animated.timing(dotOpacity3, { toValue: 1, duration: 180, useNativeDriver: NATIVE_DRIVER }),
         ]),
       ]),
 
       Animated.parallel([
         Animated.timing(subtitleOpacity, {
           toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
+          duration: 400,
+          useNativeDriver: NATIVE_DRIVER,
         }),
         Animated.spring(subtitleTranslateY, {
           toValue: 0,
           tension: 80,
           friction: 10,
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
       ]),
 
       Animated.timing(shimmerTranslate, {
         toValue: width,
-        duration: 600,
-        useNativeDriver: true,
+        duration: 500,
+        useNativeDriver: NATIVE_DRIVER,
       }),
 
-      Animated.delay(400),
+      Animated.delay(350),
 
       Animated.parallel([
         Animated.timing(containerOpacity, {
           toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
+          duration: 350,
+          useNativeDriver: NATIVE_DRIVER,
         }),
         Animated.timing(logoScale, {
           toValue: 1.15,
-          duration: 400,
-          useNativeDriver: true,
+          duration: 350,
+          useNativeDriver: NATIVE_DRIVER,
         }),
       ]),
     ]);
 
-    sequence.start(() => {
-      onFinish();
+    animationRef.current = animation;
+    animation.start(({ finished }) => {
+      if (finished) {
+        handleFinish();
+      }
     });
-  }, []);
+
+    return () => {
+      if (animationRef.current) {
+        animationRef.current.stop();
+      }
+    };
+  }, [handleFinish]);
 
   return (
-    <Animated.View style={[styles.container, { opacity: containerOpacity }]}>
+    <Animated.View style={[styles.container, { opacity: containerOpacity }]} pointerEvents="none">
       <View style={styles.bgPattern}>
         {Array.from({ length: 6 }).map((_, i) => (
           <View
@@ -161,7 +177,7 @@ export default function SplashAnimation({ onFinish }: SplashAnimationProps) {
               style={[
                 styles.shimmerOverlay,
                 {
-                  transform: [{ translateX: shimmerTranslate }],
+                  transform: [{ translateX: shimmerTranslate }, { skewX: '-20deg' }],
                 },
               ]}
             />
@@ -283,7 +299,7 @@ const styles = StyleSheet.create({
   },
   textRow: {
     overflow: 'hidden',
-    position: 'relative',
+    position: 'relative' as const,
   },
   logoText: {
     fontSize: 42,
@@ -299,7 +315,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 60,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    transform: [{ skewX: '-20deg' }],
   },
   dotsRow: {
     flexDirection: 'row',
