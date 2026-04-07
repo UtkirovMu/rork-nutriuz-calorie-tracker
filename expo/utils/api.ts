@@ -312,26 +312,6 @@ export const mealPlanApi = {
   },
 };
 
-export const dataApi = {
-  clearRecords: async () => {
-    try {
-      await apiRequest('/data/clear-records', { method: 'DELETE' });
-      console.log('[API] Records cleared on server');
-    } catch (e) {
-      console.log('[API] Clear records failed:', e);
-    }
-  },
-
-  resetAll: async () => {
-    try {
-      await apiRequest('/data/reset-all', { method: 'DELETE' });
-      console.log('[API] All data reset on server');
-    } catch (e) {
-      console.log('[API] Reset all failed:', e);
-    }
-  },
-};
-
 export const settingsApi = {
   get: async () => {
     const res = await apiRequest<{ settings: { theme: string; language: string } }>('/settings');

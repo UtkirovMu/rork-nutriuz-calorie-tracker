@@ -53,16 +53,6 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const queryClient = useQueryClient();
   const { auth } = useAuth();
   const isAuthenticated = auth.isLoggedIn;
-
-  const refreshAllData = useCallback(() => {
-    console.log('[UserContext] Refreshing all data from API...');
-    void queryClient.invalidateQueries({ queryKey: ['profile'] });
-    void queryClient.invalidateQueries({ queryKey: ['meals'] });
-    void queryClient.invalidateQueries({ queryKey: ['weightHistory'] });
-    void queryClient.invalidateQueries({ queryKey: ['achievements'] });
-    void queryClient.invalidateQueries({ queryKey: ['progressPhotos'] });
-    void queryClient.invalidateQueries({ queryKey: ['streak'] });
-  }, [queryClient]);
   const [profile, setProfile] = useState<UserProfile>(defaultProfile);
   const [meals, setMeals] = useState<MealEntry[]>([]);
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
@@ -410,7 +400,6 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const isLoading = profileQuery.isLoading || mealsQuery.isLoading;
 
   return useMemo(() => ({
-    refreshAllData,
     profile,
     updateProfile,
     dailyTargets,
@@ -431,7 +420,7 @@ export const [UserProvider, useUser] = createContextHook(() => {
     getLast7DaysCalories,
     getLast30DaysCalories,
     isLoading,
-  }), [refreshAllData, profile, updateProfile, dailyTargets, meals, todayMeals, todayTotals, addMeal, removeMeal, weightHistory, addWeightEntry, achievements, unlockAchievement, isAchievementUnlocked, progressPhotos, addProgressPhoto, removeProgressPhoto, streak, getLast7DaysCalories, getLast30DaysCalories, isLoading]);
+  }), [profile, updateProfile, dailyTargets, meals, todayMeals, todayTotals, addMeal, removeMeal, weightHistory, addWeightEntry, achievements, unlockAchievement, isAchievementUnlocked, progressPhotos, addProgressPhoto, removeProgressPhoto, streak, getLast7DaysCalories, getLast30DaysCalories, isLoading]);
 });
 
 export function useMealsByType(mealType: MealType): MealEntry[] {

@@ -37,7 +37,6 @@ export default function StatsScreen() {
     streak,
     todayTotals,
     meals,
-    refreshAllData,
   } = useUser();
 
   const [period, setPeriod] = useState<'week' | 'month'>('week');
@@ -56,9 +55,8 @@ export default function StatsScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    refreshAllData();
-    setTimeout(() => setRefreshing(false), 1200);
-  }, [refreshAllData]);
+    setTimeout(() => setRefreshing(false), 800);
+  }, []);
 
   const weekData = useMemo(() => getLast7DaysCalories(), [getLast7DaysCalories]);
   const monthData = useMemo(() => getLast30DaysCalories(), [getLast30DaysCalories]);

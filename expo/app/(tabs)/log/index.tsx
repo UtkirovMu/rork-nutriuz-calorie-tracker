@@ -36,7 +36,7 @@ const MEAL_SECTION_KEYS: { type: MealType; key: string; emoji: string }[] = [
 
 
 export default function LogScreen() {
-  const { meals, removeMeal, refreshAllData } = useUser();
+  const { meals, removeMeal } = useUser();
   const { colors } = useTheme();
   const { tr, weekdaysShort, months } = useLanguage();
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -84,9 +84,8 @@ export default function LogScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    refreshAllData();
-    setTimeout(() => setRefreshing(false), 1200);
-  }, [refreshAllData]);
+    setTimeout(() => setRefreshing(false), 800);
+  }, []);
 
   const selectedDateObj = new Date(selectedDate + 'T12:00:00');
   const selectedYear = selectedDateObj.getFullYear();
