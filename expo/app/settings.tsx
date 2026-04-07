@@ -14,10 +14,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
 import { useUser } from '@/contexts/UserContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { dataApi } from '@/utils/api';
 
 export default function SettingsScreen() {
   const { colors, themeMode, setMode } = useTheme();
-  const { profile } = useUser();
+  const { profile, refreshAllData } = useUser();
   const { tr } = useLanguage();
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -48,6 +49,8 @@ export default function SettingsScreen() {
                 'nutriuz_progress_photos',
                 'nutriuz_streak',
               ]);
+              await dataApi.clearRecords();
+              refreshAllData();
               Alert.alert(tr('common', 'done'), tr('data', 'dataCleared'));
             } catch (e) {
               console.log('Clear data error:', e);
@@ -56,7 +59,7 @@ export default function SettingsScreen() {
         },
       ]
     );
-  }, [tr]);
+  }, [tr, refreshAllData]);
 
   const handleResetAll = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -71,6 +74,8 @@ export default function SettingsScreen() {
           onPress: async () => {
             try {
               await AsyncStorage.clear();
+              await dataApi.resetAll();
+              refreshAllData();
               Alert.alert(tr('common', 'done'), tr('data', 'allDataCleared'));
             } catch (e) {
               console.log('Reset all error:', e);
@@ -79,7 +84,7 @@ export default function SettingsScreen() {
         },
       ]
     );
-  }, [tr]);
+  }, [tr, refreshAllData]);
 
   const themeOptions: { mode: ThemeMode; label: string; icon: typeof Sun }[] = [
     { mode: 'light', label: tr('theme', 'light'), icon: Sun },

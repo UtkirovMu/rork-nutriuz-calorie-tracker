@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
 import { Language, t, getMonths, getDaysOfWeek, getWeekdaysShort, getDayLabels } from '@/constants/translations';
+import { settingsApi } from '@/utils/api';
 
 const LANGUAGE_KEY = 'nutriuz_language';
 
@@ -12,6 +13,16 @@ export const [LanguageProvider, useLanguage] = createContextHook(() => {
   const langQuery = useQuery({
     queryKey: ['language'],
     queryFn: async () => {
+      try {
+        const apiSettings = await settingsApi.get();
+        if (apiSettings?.language) {
+          const lang = apiSettings.language as Language;
+          await AsyncStorage.setItem(LANGUAGE_KEY, lang);
+          return lang;
+        }
+      } catch (e) {
+        console.log('[Language] API fetch failed, using local:', e);
+      }
       const stored = await AsyncStorage.getItem(LANGUAGE_KEY);
       return (stored as Language) || 'uz';
     },
@@ -26,6 +37,12 @@ export const [LanguageProvider, useLanguage] = createContextHook(() => {
   const saveLangMutation = useMutation({
     mutationFn: async (lang: Language) => {
       await AsyncStorage.setItem(LANGUAGE_KEY, lang);
+      try {
+        await settingsApi.update({ language: lang });
+        console.log('[Language] Synced to API:', lang);
+      } catch (e) {
+        console.log('[Language] API sync failed:', e);
+      }
       return lang;
     },
     onSuccess: (data) => {

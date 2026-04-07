@@ -42,7 +42,7 @@ const analysisSchema = z.object({
 });
 
 export default function HomeScreen() {
-  const { profile, dailyTargets, todayMeals, todayTotals, removeMeal, streak } = useUser();
+  const { profile, dailyTargets, todayMeals, todayTotals, removeMeal, streak, refreshAllData } = useUser();
   const { colors } = useTheme();
   const { tr } = useLanguage();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -110,11 +110,12 @@ Qisqa va aniq javob ber o'zbek tilida.
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    refreshAllData();
     if (todayMeals.length > 0) {
       analysisMutation.mutate();
     }
-    setTimeout(() => setRefreshing(false), 800);
-  }, [todayMeals.length, analysisMutation]);
+    setTimeout(() => setRefreshing(false), 1200);
+  }, [todayMeals.length, analysisMutation, refreshAllData]);
 
   const handleScan = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

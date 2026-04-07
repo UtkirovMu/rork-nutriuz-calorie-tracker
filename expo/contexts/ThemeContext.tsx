@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
 import Colors, { ThemeColors } from '@/constants/colors';
+import { settingsApi } from '@/utils/api';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -16,6 +17,16 @@ export const [ThemeProvider, useTheme] = createContextHook(() => {
   const themeQuery = useQuery({
     queryKey: ['themeMode'],
     queryFn: async () => {
+      try {
+        const apiSettings = await settingsApi.get();
+        if (apiSettings?.theme) {
+          const mode = apiSettings.theme as ThemeMode;
+          await AsyncStorage.setItem(THEME_KEY, mode);
+          return mode;
+        }
+      } catch (e) {
+        console.log('[Theme] API fetch failed, using local:', e);
+      }
       const stored = await AsyncStorage.getItem(THEME_KEY);
       return (stored as ThemeMode) || 'system';
     },
@@ -30,6 +41,12 @@ export const [ThemeProvider, useTheme] = createContextHook(() => {
   const saveThemeMutation = useMutation({
     mutationFn: async (mode: ThemeMode) => {
       await AsyncStorage.setItem(THEME_KEY, mode);
+      try {
+        await settingsApi.update({ theme: mode });
+        console.log('[Theme] Synced to API:', mode);
+      } catch (e) {
+        console.log('[Theme] API sync failed:', e);
+      }
       return mode;
     },
     onSuccess: (data) => {

@@ -30,6 +30,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LogOut } from 'lucide-react-native';
+import { dataApi } from '@/utils/api';
 import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
 import { useUser } from '@/contexts/UserContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -38,7 +39,7 @@ import { LANGUAGE_OPTIONS } from '@/constants/translations';
 import { calculateTDEE, calculateDailyTargets } from '@/utils/calculations';
 
 export default function ProfileScreen() {
-  const { profile, updateProfile } = useUser();
+  const { profile, updateProfile, refreshAllData } = useUser();
   const { colors, themeMode, setMode } = useTheme();
   const { tr, language, setLang } = useLanguage();
   const { auth, logout } = useAuth();
@@ -55,8 +56,9 @@ export default function ProfileScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
-  }, []);
+    refreshAllData();
+    setTimeout(() => setRefreshing(false), 1200);
+  }, [refreshAllData]);
 
   const bmi = useMemo(() => {
     if (!profile.onboardingComplete) return '0';
@@ -91,7 +93,9 @@ export default function ProfileScreen() {
                 'nutriuz_streak',
                 'nutriuz_meal_plan',
               ]);
-              Alert.alert('Tayyor', "Ma'lumotlar tozalandi. Ilovani qayta oching.");
+              await dataApi.clearRecords();
+              refreshAllData();
+              Alert.alert('Tayyor', "Ma'lumotlar tozalandi.");
             } catch (e) {
               console.log('Clear data error:', e);
             }
@@ -99,7 +103,7 @@ export default function ProfileScreen() {
         },
       ]
     );
-  }, []);
+  }, [refreshAllData]);
 
   const handleResetAll = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -114,7 +118,9 @@ export default function ProfileScreen() {
           onPress: async () => {
             try {
               await AsyncStorage.clear();
-              Alert.alert('Tayyor', "Barcha ma'lumotlar tozalandi. Ilovani qayta oching.");
+              await dataApi.resetAll();
+              refreshAllData();
+              Alert.alert('Tayyor', "Barcha ma'lumotlar tozalandi.");
             } catch (e) {
               console.log('Reset all error:', e);
             }
@@ -122,7 +128,7 @@ export default function ProfileScreen() {
         },
       ]
     );
-  }, []);
+  }, [refreshAllData]);
 
   const ds = useMemo(() => StyleSheet.create({
     screen: {
@@ -736,7 +742,7 @@ export default function ProfileScreen() {
                       text: tr('login', 'logout'),
                       style: 'destructive',
                       onPress: () => {
-                        logout();
+                        void logout();
                         router.replace('/login');
                       },
                     },
