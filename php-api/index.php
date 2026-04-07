@@ -33,9 +33,37 @@ if ($route === '/auth/send-code' && $method === 'POST') {
     $stmt = $db->prepare("INSERT INTO otp_codes (identifier, code, method, expires_at) VALUES (?, ?, ?, ?)");
     $stmt->execute([$identifier, $code, $loginMethod, $expiresAt]);
 
-    // TODO: Haqiqiy SMS/Email yuborish
-    // Hozircha faqat logga yozamiz
-    error_log("OTP for $identifier: $code");
+    if ($loginMethod === 'email') {
+        $subject = "NutriUZ - Tasdiqlash kodi";
+        $htmlMessage = "
+            <html>
+            <body style='font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5;'>
+                <div style='max-width: 400px; margin: 0 auto; background: white; border-radius: 12px; padding: 30px; text-align: center;'>
+                    <h2 style='color: #1a1a1a; margin-bottom: 10px;'>NutriUZ</h2>
+                    <p style='color: #666; font-size: 14px;'>Sizning tasdiqlash kodingiz:</p>
+                    <div style='background: #f0f0f0; border-radius: 8px; padding: 15px; margin: 20px 0;'>
+                        <span style='font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1a1a1a;'>$code</span>
+                    </div>
+                    <p style='color: #999; font-size: 12px;'>Kod 5 daqiqa ichida amal qiladi.</p>
+                    <p style='color: #999; font-size: 11px; margin-top: 20px;'>Agar siz bu kodni so'ramagan bo'lsangiz, bu xabarni e'tiborsiz qoldiring.</p>
+                </div>
+            </body>
+            </html>
+        ";
+        $headers = "MIME-Version: 1.0\r\n";
+        $headers .= "Content-type: text/html; charset=UTF-8\r\n";
+        $headers .= "From: NutriUZ <noreply@" . ($_SERVER['HTTP_HOST'] ?? 'nutriuz.uz') . ">\r\n";
+
+        $sent = @mail($identifier, $subject, $htmlMessage, $headers);
+        if (!$sent) {
+            error_log("[NutriUZ] Email yuborishda xatolik: $identifier");
+        }
+    } else {
+        // SMS yuborish uchun o'z SMS provayderingizni ulang
+        error_log("[NutriUZ] SMS OTP for $identifier: $code");
+    }
+
+    error_log("[NutriUZ] OTP for $identifier: $code");
 
     success(['message' => 'Kod yuborildi'], 'Kod yuborildi');
 }
