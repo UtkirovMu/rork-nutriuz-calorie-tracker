@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, ChevronDown, Check, Search, X, Phone, Mail, Lock, Leaf, Sparkles, TrendingUp, Camera, Heart, Shield } from 'lucide-react-native';
+import { 
+  ArrowLeft, 
+  ChevronDown, 
+  Check, 
+  Search, 
+  X, 
+  Phone, 
+  Mail, 
+  Lock, 
+  Leaf, 
+  Sparkles, 
+  TrendingUp, 
+  Camera, 
+  Heart, 
+  Shield,
+  ArrowRight
+} from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,52 +57,40 @@ const HERO_IMAGES = [
 const FEATURES = [
   {
     icon: Camera,
-    color: '#FF6B6B',
-    bgColor: '#FF6B6B15',
+    color: '#22c55e',
+    bgColor: '#22c55e15',
     titleUz: 'AI Skaner',
     titleRu: 'AI Сканер',
     titleEn: 'AI Scanner',
-    descUz: 'Ovqatni rasmga oling va kaloriyani bilib oling',
-    descRu: 'Сфотографируйте еду и узнайте калории',
-    descEn: 'Snap your food and get calories',
   },
   {
     icon: TrendingUp,
-    color: '#5AC8FA',
-    bgColor: '#5AC8FA15',
+    color: '#3b82f6',
+    bgColor: '#3b82f615',
     titleUz: 'Statistika',
     titleRu: 'Статистика',
     titleEn: 'Statistics',
-    descUz: "Kunlik, haftalik va oylik ko'rsatkichlar",
-    descRu: 'Дневная, недельная и месячная статистика',
-    descEn: 'Daily, weekly and monthly stats',
   },
   {
     icon: Sparkles,
-    color: '#FFD60A',
-    bgColor: '#FFD60A15',
+    color: '#f59e0b',
+    bgColor: '#f59e0b15',
     titleUz: 'AI Maslahat',
     titleRu: 'AI Советы',
     titleEn: 'AI Advice',
-    descUz: 'Shaxsiy ovqatlanish tavsiyalari',
-    descRu: 'Персональные рекомендации по питанию',
-    descEn: 'Personalized nutrition tips',
   },
   {
     icon: Heart,
-    color: '#FF2D55',
-    bgColor: '#FF2D5515',
+    color: '#ef4444',
+    bgColor: '#ef444415',
     titleUz: "Sog'lom hayot",
     titleRu: 'Здоровая жизнь',
     titleEn: 'Healthy Life',
-    descUz: 'Maqsadlaringizga erishing',
-    descRu: 'Достигайте своих целей',
-    descEn: 'Reach your goals',
   },
 ];
 
 export default function LoginScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { tr } = useLanguage();
   const { sendCode: apiSendCode, verifyCode: apiVerifyCode } = useAuth();
   const [activeTab, setActiveTab] = useState<LoginMethod>('phone');
@@ -153,7 +157,7 @@ export default function LoginScreen() {
       const interval = setInterval(() => {
         setResendTimer((prev) => prev - 1);
       }, 1000);
-      return () => clearInterval(interval);
+      return () => interval && clearInterval(interval);
     }
   }, [resendTimer]);
 
@@ -244,8 +248,6 @@ export default function LoginScreen() {
 
     try {
       await apiSendCode(activeTab, identifier);
-      console.log('[Login] Code sent to', identifier);
-
       setStep('otp');
       setResendTimer(60);
       setOtpDigits(Array(OTP_LENGTH).fill(''));
@@ -256,14 +258,9 @@ export default function LoginScreen() {
       setTimeout(() => {
         otpInputRefs.current[0]?.focus();
       }, 500);
-    } catch (err: unknown) {
-      console.error('[Login] Send code error:', err);
+    } catch (err: any) {
       const errMsg = err instanceof Error ? err.message : tr('common', 'error');
-      if (errMsg === 'SERVER_UNAVAILABLE') {
-        setError(tr('login', 'serverUnavailable') || 'Server bilan bog\'lanib bo\'lmadi. Keyinroq urinib ko\'ring.');
-      } else {
-        setError(errMsg);
-      }
+      setError(errMsg);
     } finally {
       setIsLoading(false);
     }
@@ -288,14 +285,11 @@ export default function LoginScreen() {
       await new Promise((resolve) => setTimeout(resolve, 800));
 
       if (result.isNewUser || !result.profile?.onboardingComplete) {
-        console.log('[Login] New user, going to onboarding');
         router.replace('/onboarding');
       } else {
-        console.log('[Login] Existing account found');
         router.replace('/(tabs)/(home)');
       }
-    } catch (err: unknown) {
-      console.error('[Login] Verify error:', err);
+    } catch (err: any) {
       setOtpSuccess(false);
       setError(tr('login', 'invalidCode'));
       shakeInput();
@@ -358,14 +352,13 @@ export default function LoginScreen() {
     try {
       const identifier = activeTab === 'email' ? email.trim() : getFullPhoneNumber();
       await apiSendCode(activeTab, identifier);
-      console.log('[Login] Code resent to:', identifier);
       setResendTimer(60);
       setOtpDigits(Array(OTP_LENGTH).fill(''));
       setOtpSuccess(false);
       setError('');
       otpInputRefs.current[0]?.focus();
     } catch (err) {
-      console.error('[Login] Resend error:', err);
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -434,14 +427,12 @@ export default function LoginScreen() {
   ), [colors, selectedCountry, handleSelectCountry]);
 
   const getOtpBoxStyle = useCallback((index: number) => {
-    if (otpSuccess) return { borderColor: '#34C759', backgroundColor: '#34C75910' };
+    if (otpSuccess) return { borderColor: '#22c55e', backgroundColor: '#22c55e10' };
     if (error) return { borderColor: colors.danger, backgroundColor: colors.danger + '08' };
-    if (focusedOtpIndex === index) return { borderColor: colors.primary, backgroundColor: colors.primary + '08' };
+    if (focusedOtpIndex === index) return { borderColor: '#22c55e', backgroundColor: '#22c55e08' };
     if (otpDigits[index]) return { borderColor: colors.border, backgroundColor: colors.surfaceSecondary };
     return { borderColor: colors.border, backgroundColor: colors.surface };
   }, [otpSuccess, error, focusedOtpIndex, otpDigits, colors]);
-
-  const isDark = colors.background === '#0E0E10';
 
   const renderInputStep = () => (
     <Animated.View style={{
@@ -465,7 +456,7 @@ export default function LoginScreen() {
             scrollEnabled={false}
           >
             {HERO_IMAGES.map((uri, i) => (
-              <View key={i} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.38 }}>
+              <View key={i} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.4 }}>
                 <Image
                   source={{ uri }}
                   style={styles.heroImage}
@@ -475,7 +466,7 @@ export default function LoginScreen() {
             ))}
           </ScrollView>
           <LinearGradient
-            colors={['transparent', isDark ? '#0E0E10' : '#F5F5F7']}
+            colors={['transparent', isDark ? '#050506' : '#FFFFFF']}
             style={styles.heroGradient}
           />
           <View style={styles.heroOverlay}>
@@ -485,7 +476,7 @@ export default function LoginScreen() {
                   key={i}
                   style={[
                     styles.heroDot,
-                    { backgroundColor: i === heroIndex ? '#FFFFFF' : 'rgba(255,255,255,0.4)' },
+                    { backgroundColor: i === heroIndex ? '#22c55e' : 'rgba(255,255,255,0.4)' },
                     i === heroIndex && styles.heroDotActive,
                   ]}
                 />
@@ -494,7 +485,7 @@ export default function LoginScreen() {
           </View>
           <SafeAreaView edges={['top']} style={styles.heroTopBar}>
             <View style={styles.logoBadge}>
-              <Leaf size={16} color="#FFFFFF" strokeWidth={2.5} />
+              <Leaf size={18} color="#FFFFFF" strokeWidth={2.5} />
             </View>
             <Text style={styles.logoLabel}>Oqsil</Text>
           </SafeAreaView>
@@ -504,9 +495,16 @@ export default function LoginScreen() {
           opacity: fadeAnim,
           transform: [{ translateY: slideUp }],
         }]}>
-          <Text style={[styles.welcomeTitle, { color: colors.text }]}>{tr('login', 'welcome')}</Text>
+          <View style={styles.badgeContainer}>
+             <Sparkles size={14} color="#22c55e" />
+             <Text style={styles.badgeText}>AI Dietolog & Sog'lom hayot</Text>
+          </View>
+          
+          <Text style={[styles.welcomeTitle, { color: colors.text }]}>
+             Xush kelibsiz!
+          </Text>
           <Text style={[styles.welcomeDesc, { color: colors.textSecondary }]}>
-            {tr('login', 'appDescription')}
+            Sun'iy intellekt yordamida sog'lom turmush tarzini shakllantiring.
           </Text>
 
           <View style={styles.featuresGrid}>
@@ -524,7 +522,7 @@ export default function LoginScreen() {
                   ]}
                 >
                   <View style={[styles.featureIconCircle, { backgroundColor: feature.bgColor }]}>
-                    <IconComp size={18} color={feature.color} strokeWidth={2} />
+                    <IconComp size={20} color={feature.color} strokeWidth={2.5} />
                   </View>
                   <Text style={[styles.featureLabel, { color: colors.text }]} numberOfLines={1}>
                     {getFeatureTitle(feature)}
@@ -535,41 +533,39 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.formSection}>
-            <View style={[styles.segmentControl, { backgroundColor: isDark ? colors.surfaceSecondary : '#EEEEF0' }]}>
+            <View style={[styles.segmentControl, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}>
               <TouchableOpacity
                 style={[
                   styles.segmentBtn,
-                  activeTab === 'phone' && [styles.segmentBtnActive, { backgroundColor: isDark ? colors.surface : '#FFFFFF' }],
+                  activeTab === 'phone' && [styles.segmentBtnActive, { backgroundColor: isDark ? '#0f172a' : '#FFFFFF' }],
                 ]}
                 onPress={() => switchTab('phone')}
                 activeOpacity={0.7}
-                testID="tab-phone"
               >
-                <Phone size={14} color={activeTab === 'phone' ? colors.primary : colors.textTertiary} style={{ marginRight: 6 }} />
+                <Phone size={14} color={activeTab === 'phone' ? '#22c55e' : '#64748b'} style={{ marginRight: 6 }} />
                 <Text style={[
                   styles.segmentText,
-                  { color: activeTab === 'phone' ? colors.text : colors.textTertiary },
+                  { color: activeTab === 'phone' ? colors.text : '#64748b' },
                   activeTab === 'phone' && styles.segmentTextActive,
                 ]}>
-                  {tr('login', 'phoneTab')}
+                  Telefon
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.segmentBtn,
-                  activeTab === 'email' && [styles.segmentBtnActive, { backgroundColor: isDark ? colors.surface : '#FFFFFF' }],
+                  activeTab === 'email' && [styles.segmentBtnActive, { backgroundColor: isDark ? '#0f172a' : '#FFFFFF' }],
                 ]}
                 onPress={() => switchTab('email')}
                 activeOpacity={0.7}
-                testID="tab-email"
               >
-                <Mail size={14} color={activeTab === 'email' ? colors.primary : colors.textTertiary} style={{ marginRight: 6 }} />
+                <Mail size={14} color={activeTab === 'email' ? '#22c55e' : '#64748b'} style={{ marginRight: 6 }} />
                 <Text style={[
                   styles.segmentText,
-                  { color: activeTab === 'email' ? colors.text : colors.textTertiary },
+                  { color: activeTab === 'email' ? colors.text : '#64748b' },
                   activeTab === 'email' && styles.segmentTextActive,
                 ]}>
-                  {tr('login', 'emailTab')}
+                  Email
                 </Text>
               </TouchableOpacity>
             </View>
@@ -581,39 +577,34 @@ export default function LoginScreen() {
                     style={[
                       styles.countryBtn,
                       {
-                        backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                        borderColor: inputFocused ? colors.primary : (isDark ? colors.border : '#E5E5EA'),
+                        backgroundColor: isDark ? '#0f172a' : '#FFFFFF',
+                        borderColor: inputFocused ? '#22c55e' : (isDark ? '#334155' : '#e2e8f0'),
                       },
                     ]}
-                    onPress={() => {
-                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setCountryPickerVisible(true);
-                    }}
+                    onPress={() => setCountryPickerVisible(true)}
                     activeOpacity={0.7}
-                    testID="country-selector"
                   >
                     <Text style={styles.flagText}>{selectedCountry.flag}</Text>
                     <Text style={[styles.dialText, { color: colors.text }]}>{selectedCountry.dial}</Text>
-                    <ChevronDown size={12} color={colors.textTertiary} />
+                    <ChevronDown size={12} color="#64748b" />
                   </TouchableOpacity>
                   <TextInput
                     style={[
                       styles.phoneInput,
                       {
-                        backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                        borderColor: inputFocused ? colors.primary : (isDark ? colors.border : '#E5E5EA'),
+                        backgroundColor: isDark ? '#0f172a' : '#FFFFFF',
+                        borderColor: inputFocused ? '#22c55e' : (isDark ? '#334155' : '#e2e8f0'),
                         color: colors.text,
                       },
                       error ? { borderColor: colors.danger } : null,
                     ]}
                     value={phone}
                     onChangeText={(val) => { setPhone(val); setError(''); }}
-                    placeholder={tr('login', 'phonePlaceholder')}
-                    placeholderTextColor={colors.textTertiary}
+                    placeholder="90 123 45 67"
+                    placeholderTextColor="#94a3b8"
                     keyboardType="phone-pad"
                     onFocus={() => setInputFocused(true)}
                     onBlur={() => setInputFocused(false)}
-                    testID="input-phone"
                   />
                 </View>
               ) : (
@@ -621,22 +612,20 @@ export default function LoginScreen() {
                   style={[
                     styles.emailInput,
                     {
-                      backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                      borderColor: inputFocused ? colors.primary : (isDark ? colors.border : '#E5E5EA'),
+                      backgroundColor: isDark ? '#0f172a' : '#FFFFFF',
+                      borderColor: inputFocused ? '#22c55e' : (isDark ? '#334155' : '#e2e8f0'),
                       color: colors.text,
                     },
                     error ? { borderColor: colors.danger } : null,
                   ]}
                   value={email}
                   onChangeText={(val) => { setEmail(val); setError(''); }}
-                  placeholder={tr('login', 'emailPlaceholder')}
-                  placeholderTextColor={colors.textTertiary}
+                  placeholder="example@mail.com"
+                  placeholderTextColor="#94a3b8"
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  autoCorrect={false}
                   onFocus={() => setInputFocused(true)}
                   onBlur={() => setInputFocused(false)}
-                  testID="input-email"
                 />
               )}
             </Animated.View>
@@ -647,17 +636,16 @@ export default function LoginScreen() {
               <TouchableOpacity
                 style={[
                   styles.sendBtn,
-                  (!isInputValid || isLoading) && { opacity: 0.4 },
+                  (!isInputValid || isLoading) && { opacity: 0.6 },
                 ]}
                 onPress={handleSendCode}
                 onPressIn={handleButtonPressIn}
                 onPressOut={handleButtonPressOut}
                 disabled={!isInputValid || isLoading}
                 activeOpacity={0.8}
-                testID="send-code-button"
               >
                 <LinearGradient
-                  colors={['#0B8F6C', '#079E76']}
+                  colors={['#22c55e', '#16a34a']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.sendBtnGradient}
@@ -665,17 +653,20 @@ export default function LoginScreen() {
                   {isLoading ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.sendBtnText}>
-                      {tr('login', 'sendCode')}
-                    </Text>
+                    <View style={styles.btnRow}>
+                       <Text style={styles.sendBtnText}>Kodni yuborish</Text>
+                       <ArrowRight size={18} color="#FFFFFF" />
+                    </View>
                   )}
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
 
             <View style={styles.termsRow}>
-              <Shield size={11} color={colors.textTertiary} />
-              <Text style={[styles.termsText, { color: colors.textTertiary }]}>{tr('login', 'termsText')}</Text>
+              <Shield size={12} color="#64748b" />
+              <Text style={[styles.termsText, { color: '#64748b' }]}>
+                Xavfsiz va ishonchli kirish
+              </Text>
             </View>
           </View>
         </Animated.View>
@@ -689,10 +680,10 @@ export default function LoginScreen() {
       opacity: otpFadeAnim,
       transform: [{ translateY: otpSlideAnim }],
     }}>
-      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: 'transparent' }}>
+      <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         <View style={styles.otpContainer}>
           <TouchableOpacity
-            style={[styles.backBtn, { backgroundColor: isDark ? colors.surfaceSecondary : '#F0F0F2' }]}
+            style={[styles.backBtn, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}
             onPress={handleGoBack}
             activeOpacity={0.6}
             disabled={isVerifying}
@@ -701,18 +692,18 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <View style={styles.otpHeader}>
-            <View style={[styles.otpIconWrap, { backgroundColor: colors.primary + '15' }]}>
-              <Lock size={26} color={colors.primary} strokeWidth={1.8} />
+            <View style={[styles.otpIconWrap, { backgroundColor: '#22c55e15' }]}>
+              <Lock size={32} color="#22c55e" strokeWidth={2} />
             </View>
-            <Text style={[styles.otpTitle, { color: colors.text }]}>{tr('login', 'otpTitle')}</Text>
+            <Text style={[styles.otpTitle, { color: colors.text }]}>Tasdiqlash kodi</Text>
             <Text style={[styles.otpSubtitle, { color: colors.textSecondary }]}>
-              {tr('login', 'otpSubtitle').replace('{target}', '')}
+              Kodni quyidagi manzilga yubordik:
             </Text>
             <View style={[styles.identifierChip, {
-              backgroundColor: isDark ? colors.surfaceSecondary : colors.primary + '0C',
-              borderColor: colors.primary + '20',
+              backgroundColor: isDark ? '#1e293b' : '#22c55e08',
+              borderColor: '#22c55e20',
             }]}>
-              <Text style={[styles.identifierText, { color: colors.primary }]}>{currentIdentifier}</Text>
+              <Text style={[styles.identifierText, { color: '#22c55e' }]}>{currentIdentifier}</Text>
             </View>
           </View>
 
@@ -728,10 +719,10 @@ export default function LoginScreen() {
                     {
                       borderColor: boxStyle.borderColor,
                       backgroundColor: boxStyle.backgroundColor,
-                      color: otpSuccess ? '#34C759' : colors.text,
+                      color: otpSuccess ? '#22c55e' : colors.text,
                     },
                     focusedOtpIndex === index && !otpSuccess && !error && {
-                      borderColor: colors.primary,
+                      borderColor: '#22c55e',
                       borderWidth: 2,
                     },
                   ]}
@@ -742,9 +733,7 @@ export default function LoginScreen() {
                   onBlur={() => setFocusedOtpIndex(null)}
                   keyboardType="number-pad"
                   maxLength={index === 0 ? OTP_LENGTH : 1}
-                  selectTextOnFocus
                   editable={!isVerifying && !otpSuccess}
-                  testID={`otp-input-${index}`}
                 />
               );
             })}
@@ -752,23 +741,14 @@ export default function LoginScreen() {
 
           {isVerifying && (
             <View style={styles.verifyingRow}>
-              <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={[styles.verifyingText, { color: colors.textSecondary }]}>{tr('login', 'verifying')}</Text>
+              <ActivityIndicator size="small" color="#22c55e" />
+              <Text style={[styles.verifyingText, { color: colors.textSecondary }]}>Tekshirilmoqda...</Text>
             </View>
           )}
 
           {error && !isVerifying ? (
             <Text style={[styles.otpError, { color: colors.danger }]}>{error}</Text>
           ) : null}
-
-          {activeTab === 'email' && (
-            <View style={[styles.spamWarning, { backgroundColor: '#FF9500' + '15', borderColor: '#FF9500' + '30' }]}>
-              <Mail size={14} color="#FF9500" />
-              <Text style={[styles.spamWarningText, { color: '#FF9500' }]}>
-                {tr('login', 'spamWarning')}
-              </Text>
-            </View>
-          )}
 
           <TouchableOpacity
             onPress={handleResendCode}
@@ -778,11 +758,11 @@ export default function LoginScreen() {
           >
             <Text style={[
               styles.resendText,
-              { color: resendTimer > 0 || isVerifying ? colors.textTertiary : colors.primary },
+              { color: resendTimer > 0 || isVerifying ? colors.textTertiary : '#22c55e' },
             ]}>
               {resendTimer > 0
-                ? tr('login', 'resendIn').replace('{sec}', resendTimer.toString())
-                : tr('login', 'resendCode')}
+                ? `Kodni qayta yuborish (${resendTimer}s)`
+                : 'Kodni qayta yuborish'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -791,7 +771,7 @@ export default function LoginScreen() {
       {successAnim && (
         <View style={[styles.successOverlay, { backgroundColor: colors.background + 'F2' }]}>
           <Animated.View style={[styles.successCircle, { transform: [{ scale: successScale }] }]}>
-            <Check size={36} color="#FFFFFF" strokeWidth={3} />
+            <Check size={40} color="#FFFFFF" strokeWidth={3} />
           </Animated.View>
         </View>
       )}
@@ -799,7 +779,7 @@ export default function LoginScreen() {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? '#050506' : '#FFFFFF' }]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -811,50 +791,33 @@ export default function LoginScreen() {
         visible={countryPickerVisible}
         animationType="slide"
         transparent
-        onRequestClose={() => {
-          setCountryPickerVisible(false);
-          setCountrySearch('');
-        }}
       >
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => {
-            setCountryPickerVisible(false);
-            setCountrySearch('');
-          }}
+          onPress={() => setCountryPickerVisible(false)}
         >
-          <TouchableOpacity activeOpacity={1} style={[styles.modalSheet, { backgroundColor: colors.background }]}>
-            <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
+          <TouchableOpacity activeOpacity={1} style={[styles.modalSheet, { backgroundColor: isDark ? '#0f172a' : '#FFFFFF' }]}>
+            <View style={[styles.modalHandle, { backgroundColor: isDark ? '#334155' : '#e2e8f0' }]} />
             <View style={styles.modalTop}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Davlatni tanlang</Text>
               <TouchableOpacity
-                style={[styles.modalClose, { backgroundColor: colors.surfaceSecondary }]}
-                onPress={() => {
-                  setCountryPickerVisible(false);
-                  setCountrySearch('');
-                }}
+                style={[styles.modalClose, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}
+                onPress={() => setCountryPickerVisible(false)}
               >
                 <X size={16} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            <View style={[styles.searchBox, { backgroundColor: isDark ? colors.surfaceSecondary : '#F0F0F2' }]}>
-              <Search size={16} color={colors.textTertiary} />
+            <View style={[styles.searchBox, { backgroundColor: isDark ? '#1e293b' : '#f8fafc' }]}>
+              <Search size={16} color="#64748b" />
               <TextInput
                 style={[styles.searchInput, { color: colors.text }]}
                 value={countrySearch}
                 onChangeText={setCountrySearch}
                 placeholder="Qidirish..."
-                placeholderTextColor={colors.textTertiary}
-                autoCorrect={false}
-                testID="country-search"
+                placeholderTextColor="#94a3b8"
               />
-              {countrySearch.length > 0 && (
-                <TouchableOpacity onPress={() => setCountrySearch('')}>
-                  <X size={14} color={colors.textTertiary} />
-                </TouchableOpacity>
-              )}
             </View>
 
             <FlatList
@@ -862,7 +825,6 @@ export default function LoginScreen() {
               keyExtractor={(item) => item.code}
               renderItem={renderCountryItem}
               keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 40 }}
             />
           </TouchableOpacity>
@@ -880,404 +842,423 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   heroSection: {
-    height: SCREEN_HEIGHT * 0.38,
-    position: 'relative' as const,
+    height: SCREEN_HEIGHT * 0.4,
+    position: 'relative',
     overflow: 'hidden',
   },
   heroImage: {
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.38,
+    height: SCREEN_HEIGHT * 0.4,
   },
   heroGradient: {
-    position: 'absolute' as const,
+    position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 120,
+    height: 160,
   },
   heroOverlay: {
-    position: 'absolute' as const,
-    bottom: 16,
+    position: 'absolute',
+    bottom: 24,
     left: 0,
     right: 0,
     alignItems: 'center',
   },
   heroDots: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
   },
   heroDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   heroDotActive: {
-    width: 20,
-    borderRadius: 3,
+    width: 24,
+    borderRadius: 4,
   },
   heroTopBar: {
-    position: 'absolute' as const,
+    position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 8,
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'android' ? 40 : 0,
   },
   logoBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: 'rgba(11, 143, 108, 0.85)',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#22c55e',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
+    marginRight: 10,
+    shadowColor: '#22c55e',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   logoLabel: {
-    fontSize: 17,
-    fontWeight: '700' as const,
+    fontSize: 22,
+    fontWeight: '800',
     color: '#FFFFFF',
-    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowColor: 'rgba(0,0,0,0.2)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
   contentSection: {
     paddingHorizontal: 24,
-    marginTop: -8,
+    marginTop: -20,
+  },
+  badgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#22c55e10',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    gap: 6,
+    marginBottom: 16,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#22c55e',
   },
   welcomeTitle: {
-    fontSize: 28,
-    fontWeight: '800' as const,
-    letterSpacing: -0.6,
-    marginBottom: 6,
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -1,
+    marginBottom: 8,
   },
   welcomeDesc: {
-    fontSize: 15,
-    lineHeight: 21,
-    marginBottom: 24,
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 32,
   },
   featuresGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 28,
+    marginBottom: 36,
   },
   featureItem: {
     alignItems: 'center',
-    width: (SCREEN_WIDTH - 48 - 36) / 4,
+    width: (SCREEN_WIDTH - 48 - 40) / 4,
   },
   featureIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
   },
   featureLabel: {
-    fontSize: 11,
-    fontWeight: '600' as const,
+    fontSize: 12,
+    fontWeight: '700',
     textAlign: 'center',
   },
   formSection: {
-    paddingBottom: 24,
+    paddingBottom: 40,
   },
   segmentControl: {
     flexDirection: 'row',
-    borderRadius: 12,
-    padding: 3,
-    marginBottom: 16,
+    borderRadius: 16,
+    padding: 4,
+    marginBottom: 20,
   },
   segmentBtn: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: 12,
+    borderRadius: 12,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
   },
   segmentBtnActive: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   segmentText: {
-    fontSize: 13,
-    fontWeight: '500' as const,
+    fontSize: 14,
+    fontWeight: '600',
   },
   segmentTextActive: {
-    fontWeight: '600' as const,
+    fontWeight: '700',
   },
   phoneRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
+    gap: 10,
+    marginBottom: 16,
   },
   countryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
-    height: 52,
-    paddingHorizontal: 10,
-    borderWidth: 1.2,
-    gap: 4,
+    borderRadius: 16,
+    height: 56,
+    paddingHorizontal: 12,
+    borderWidth: 1.5,
+    gap: 6,
   },
   flagText: {
-    fontSize: 18,
+    fontSize: 20,
   },
   dialText: {
-    fontSize: 14,
-    fontWeight: '500' as const,
+    fontSize: 15,
+    fontWeight: '600',
   },
   phoneInput: {
     flex: 1,
-    borderRadius: 14,
-    height: 52,
-    paddingHorizontal: 14,
-    fontSize: 16,
-    borderWidth: 1.2,
+    borderRadius: 16,
+    height: 56,
+    paddingHorizontal: 16,
+    fontSize: 17,
+    borderWidth: 1.5,
   },
   emailInput: {
-    borderRadius: 14,
-    height: 52,
+    borderRadius: 16,
+    height: 56,
     paddingHorizontal: 16,
-    fontSize: 16,
-    borderWidth: 1.2,
-    marginBottom: 12,
+    fontSize: 17,
+    borderWidth: 1.5,
+    marginBottom: 16,
   },
   errorText: {
-    fontSize: 13,
-    marginBottom: 10,
-    marginLeft: 2,
+    fontSize: 14,
+    marginBottom: 12,
+    marginLeft: 4,
+    fontWeight: '500',
   },
   sendBtn: {
-    borderRadius: 14,
+    borderRadius: 18,
     overflow: 'hidden',
+    shadowColor: '#22c55e',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 8,
   },
   sendBtnGradient: {
-    height: 52,
+    height: 60,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 14,
+  },
+  btnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   sendBtnText: {
-    fontSize: 16,
-    fontWeight: '700' as const,
+    fontSize: 18,
+    fontWeight: '800',
     color: '#FFFFFF',
-    letterSpacing: 0.2,
+    letterSpacing: 0.5,
   },
   termsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
-    marginTop: 16,
+    gap: 6,
+    marginTop: 20,
   },
   termsText: {
-    fontSize: 11,
-    textAlign: 'center',
-    lineHeight: 15,
+    fontSize: 12,
+    fontWeight: '600',
   },
   otpContainer: {
     flex: 1,
-    paddingHorizontal: 28,
-    paddingTop: 8,
+    paddingHorizontal: 32,
+    paddingTop: 10,
   },
   backBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 28,
+    marginBottom: 32,
   },
   otpHeader: {
     alignItems: 'center',
-    marginBottom: 36,
+    marginBottom: 40,
   },
   otpIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
+    width: 80,
+    height: 80,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   otpTitle: {
-    fontSize: 26,
-    fontWeight: '800' as const,
-    letterSpacing: -0.5,
-    marginBottom: 6,
+    fontSize: 30,
+    fontWeight: '800',
+    letterSpacing: -1,
+    marginBottom: 8,
   },
   otpSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
     textAlign: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   identifierChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1.5,
   },
   identifierText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
+    fontSize: 15,
+    fontWeight: '700',
   },
   otpRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   otpBox: {
-    width: (SCREEN_WIDTH - 56 - 40) / 6,
-    height: 56,
-    borderRadius: 14,
-    borderWidth: 1.5,
+    width: (SCREEN_WIDTH - 64 - 50) / 6,
+    height: 60,
+    borderRadius: 16,
+    borderWidth: 2,
     textAlign: 'center',
-    fontSize: 24,
-    fontWeight: '700' as const,
+    fontSize: 26,
+    fontWeight: '800',
   },
   verifyingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 6,
+    gap: 10,
+    paddingVertical: 8,
   },
   verifyingText: {
-    fontSize: 14,
-    fontWeight: '500' as const,
+    fontSize: 15,
+    fontWeight: '600',
   },
   otpError: {
-    fontSize: 13,
+    fontSize: 14,
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 6,
+    fontWeight: '500',
   },
   resendBtn: {
     alignSelf: 'center',
-    marginTop: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    marginTop: 32,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
   resendText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-  },
-  spamWarning: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 8,
-  },
-  spamWarningText: {
-    fontSize: 12,
-    fontWeight: '500' as const,
-    flex: 1,
-    lineHeight: 16,
+    fontSize: 15,
+    fontWeight: '700',
   },
   successOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
+    zIndex: 100,
   },
   successCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#34C759',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#22c55e',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#34C759',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowColor: '#22c55e',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 15,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   modalSheet: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '80%',
-    paddingTop: 10,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    maxHeight: '85%',
+    paddingTop: 12,
   },
   modalHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
+    width: 40,
+    height: 5,
+    borderRadius: 3,
     alignSelf: 'center',
-    marginBottom: 10,
+    marginBottom: 16,
   },
   modalTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 10,
+    paddingHorizontal: 24,
+    marginBottom: 16,
   },
   modalTitle: {
-    fontSize: 17,
-    fontWeight: '600' as const,
+    fontSize: 20,
+    fontWeight: '800',
   },
   modalClose: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
-    marginHorizontal: 20,
-    marginBottom: 8,
-    paddingHorizontal: 10,
-    height: 40,
-    gap: 8,
+    borderRadius: 16,
+    marginHorizontal: 24,
+    marginBottom: 16,
+    paddingHorizontal: 14,
+    height: 48,
+    gap: 10,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
-    paddingVertical: 0,
+    fontSize: 16,
+    fontWeight: '500',
   },
   countryItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 13,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   countryItemFlag: {
-    fontSize: 26,
-    marginRight: 12,
+    fontSize: 28,
+    marginRight: 16,
   },
   countryItemInfo: {
     flex: 1,
   },
   countryItemName: {
-    fontSize: 15,
-    fontWeight: '500' as const,
+    fontSize: 16,
+    fontWeight: '600',
   },
   countryItemCode: {
-    fontSize: 12,
-    marginTop: 1,
+    fontSize: 13,
+    marginTop: 2,
   },
   countryItemDial: {
-    fontSize: 15,
-    fontWeight: '600' as const,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
