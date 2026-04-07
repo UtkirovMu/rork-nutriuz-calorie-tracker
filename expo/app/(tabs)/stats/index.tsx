@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Rect, Line, Text as SvgText, Circle, Polyline } from 'react-native-svg';
 import { BarChart3, TrendingUp, Scale, Plus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/contexts/UserContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -26,6 +27,7 @@ const CHART_PADDING_BOTTOM = 28;
 const CHART_PADDING_TOP = 12;
 
 export default function StatsScreen() {
+  const queryClient = useQueryClient();
   const { colors } = useTheme();
   const { tr } = useLanguage();
   const {
@@ -53,10 +55,20 @@ export default function StatsScreen() {
     ]).start();
   }, [fadeAnim, slideAnim]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
-  }, []);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['meals'] }),
+        queryClient.invalidateQueries({ queryKey: ['weightHistory'] }),
+        queryClient.invalidateQueries({ queryKey: ['streak'] }),
+      ]);
+    } catch (e) {
+      console.log('[Stats] Refresh error:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [queryClient]);
 
   const weekData = useMemo(() => getLast7DaysCalories(), [getLast7DaysCalories]);
   const monthData = useMemo(() => getLast30DaysCalories(), [getLast30DaysCalories]);

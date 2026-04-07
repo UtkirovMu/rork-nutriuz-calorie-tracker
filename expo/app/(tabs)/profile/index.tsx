@@ -29,6 +29,7 @@ import {
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQueryClient } from '@tanstack/react-query';
 import { LogOut } from 'lucide-react-native';
 import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
 import { useUser } from '@/contexts/UserContext';
@@ -42,6 +43,7 @@ export default function ProfileScreen() {
   const { colors, themeMode, setMode } = useTheme();
   const { tr, language, setLang } = useLanguage();
   const { auth, logout } = useAuth();
+  const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -53,10 +55,22 @@ export default function ProfileScreen() {
     ]).start();
   }, [fadeAnim, slideAnim]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
-  }, []);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['profile'] }),
+        queryClient.invalidateQueries({ queryKey: ['meals'] }),
+        queryClient.invalidateQueries({ queryKey: ['weightHistory'] }),
+        queryClient.invalidateQueries({ queryKey: ['achievements'] }),
+        queryClient.invalidateQueries({ queryKey: ['streak'] }),
+      ]);
+    } catch (e) {
+      console.log('[Profile] Refresh error:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [queryClient]);
 
   const bmi = useMemo(() => {
     if (!profile.onboardingComplete) return '0';
@@ -735,8 +749,8 @@ export default function ProfileScreen() {
                     {
                       text: tr('login', 'logout'),
                       style: 'destructive',
-                      onPress: () => {
-                        logout();
+                      onPress: async () => {
+                        await logout();
                         router.replace('/login');
                       },
                     },

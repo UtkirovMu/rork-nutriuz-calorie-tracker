@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, router } from 'expo-router';
 import { Camera, Plus, Flame, TrendingUp, Utensils, Trophy, CameraIcon, BarChart3, Sparkles } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { generateObject } from '@rork-ai/toolkit-sdk';
 import { z } from 'zod';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -47,6 +47,7 @@ export default function HomeScreen() {
   const { tr } = useLanguage();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
+  const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
 
   const cardAnims = useRef(
@@ -108,13 +109,23 @@ Qisqa va aniq javob ber o'zbek tilida.
     }
   }, [shouldAnalyze, hasAnalysis, isAnalyzing, analysisMutation]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    if (todayMeals.length > 0) {
-      analysisMutation.mutate();
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['profile'] }),
+        queryClient.invalidateQueries({ queryKey: ['meals'] }),
+        queryClient.invalidateQueries({ queryKey: ['streak'] }),
+      ]);
+      if (todayMeals.length > 0) {
+        analysisMutation.mutate();
+      }
+    } catch (e) {
+      console.log('[Home] Refresh error:', e);
+    } finally {
+      setRefreshing(false);
     }
-    setTimeout(() => setRefreshing(false), 800);
-  }, [todayMeals.length, analysisMutation]);
+  }, [queryClient, todayMeals.length, analysisMutation]);
 
   const handleScan = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

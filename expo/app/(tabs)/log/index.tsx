@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Calendar, Camera, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, UtensilsCrossed } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/contexts/UserContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -36,6 +37,7 @@ const MEAL_SECTION_KEYS: { type: MealType; key: string; emoji: string }[] = [
 
 
 export default function LogScreen() {
+  const queryClient = useQueryClient();
   const { meals, removeMeal } = useUser();
   const { colors } = useTheme();
   const { tr, weekdaysShort, months } = useLanguage();
@@ -82,10 +84,16 @@ export default function LogScreen() {
     );
   }, [removeMeal, tr]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
-  }, []);
+    try {
+      await queryClient.invalidateQueries({ queryKey: ['meals'] });
+    } catch (e) {
+      console.log('[Log] Refresh error:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [queryClient]);
 
   const selectedDateObj = new Date(selectedDate + 'T12:00:00');
   const selectedYear = selectedDateObj.getFullYear();
