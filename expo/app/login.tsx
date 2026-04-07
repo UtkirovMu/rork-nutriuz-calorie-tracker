@@ -13,15 +13,14 @@ import {
   Easing,
   Modal,
   FlatList,
-  ScrollView,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, ChevronRight, ChevronDown, Check, Search, X, Scan, BarChart3, Brain, Apple, Phone, Mail, Shield } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown, Check, Search, X, Phone, Mail, Lock, Leaf, Sparkles, TrendingUp, Camera } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,52 +30,44 @@ type LoginMethod = 'email' | 'phone';
 type Step = 'input' | 'otp';
 
 const OTP_LENGTH = 6;
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const CAROUSEL_SLIDES = [
+const FEATURES = [
   {
-    icon: Scan,
-    color: '#FFFFFF',
-    bg: 'rgba(255,255,255,0.15)',
+    icon: Camera,
     titleUz: 'AI Skaner',
     titleRu: 'AI Сканер',
     titleEn: 'AI Scanner',
-    descUz: 'Ovqatingizni rasmga oling — AI tarkibini tahlil qiladi',
-    descRu: 'Сфотографируйте еду — AI проанализирует состав',
-    descEn: 'Take a photo of your food — AI analyzes nutrition',
+    descUz: 'Ovqatni rasmga oling',
+    descRu: 'Сфотографируйте еду',
+    descEn: 'Snap your food',
   },
   {
-    icon: BarChart3,
-    color: '#FFFFFF',
-    bg: 'rgba(255,255,255,0.15)',
+    icon: TrendingUp,
     titleUz: 'Statistika',
     titleRu: 'Статистика',
     titleEn: 'Statistics',
-    descUz: "Kaloriya, oqsil, uglevod va yog'larni kuzating",
-    descRu: 'Отслеживайте калории, белки, углеводы и жиры',
-    descEn: 'Track calories, protein, carbs and fats',
+    descUz: 'Kaloriyani kuzating',
+    descRu: 'Отслеживайте калории',
+    descEn: 'Track calories',
   },
   {
-    icon: Brain,
-    color: '#FFFFFF',
-    bg: 'rgba(255,255,255,0.15)',
-    titleUz: 'AI Maslahatchi',
-    titleRu: 'AI Консультант',
-    titleEn: 'AI Advisor',
-    descUz: "Shaxsiy ovqatlanish bo'yicha maslahat oling",
-    descRu: 'Получайте персональные советы по питанию',
-    descEn: 'Get personalized nutrition advice',
+    icon: Sparkles,
+    titleUz: 'AI Maslahat',
+    titleRu: 'AI Советы',
+    titleEn: 'AI Advice',
+    descUz: 'Shaxsiy tavsiyalar',
+    descRu: 'Персональные советы',
+    descEn: 'Personal tips',
   },
   {
-    icon: Apple,
-    color: '#FFFFFF',
-    bg: 'rgba(255,255,255,0.15)',
+    icon: Leaf,
     titleUz: 'Ovqat rejasi',
     titleRu: 'План питания',
     titleEn: 'Meal Plan',
-    descUz: "AI haftalik ovqat rejangizni tuzib beradi",
-    descRu: 'AI составит ваш недельный план питания',
-    descEn: 'AI creates your weekly meal plan',
+    descUz: 'Haftalik reja',
+    descRu: 'Недельный план',
+    descEn: 'Weekly plan',
   },
 ];
 
@@ -98,59 +89,55 @@ export default function LoginScreen() {
   const [successAnim, setSuccessAnim] = useState(false);
   const [otpSuccess, setOtpSuccess] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
-  const [carouselIndex, setCarouselIndex] = useState(0);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [featureIndex, setFeatureIndex] = useState(0);
 
   const otpInputRefs = useRef<(TextInput | null)[]>([]);
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
-  const carouselRef = useRef<ScrollView>(null);
-  const carouselTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const featureScrollRef = useRef<ScrollView>(null);
+  const featureTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideUp = useRef(new Animated.Value(60)).current;
+  const slideUp = useRef(new Animated.Value(40)).current;
   const otpFadeAnim = useRef(new Animated.Value(0)).current;
   const otpSlideAnim = useRef(new Animated.Value(30)).current;
   const inputFadeAnim = useRef(new Animated.Value(1)).current;
   const inputSlideAnim = useRef(new Animated.Value(0)).current;
   const successScale = useRef(new Animated.Value(0)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
-  const heroScale = useRef(new Animated.Value(0.9)).current;
-  const dotPulse = useRef(new Animated.Value(1)).current;
+  const logoFloat = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 800, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.spring(slideUp, { toValue: 0, friction: 8, tension: 40, useNativeDriver: true }),
-      Animated.spring(heroScale, { toValue: 1, friction: 6, tension: 30, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.spring(slideUp, { toValue: 0, friction: 9, tension: 40, useNativeDriver: true }),
     ]).start();
-  }, [fadeAnim, slideUp, heroScale]);
 
-  useEffect(() => {
-    const pulse = Animated.loop(
+    const float = Animated.loop(
       Animated.sequence([
-        Animated.timing(dotPulse, { toValue: 1.3, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(dotPulse, { toValue: 1, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(logoFloat, { toValue: -6, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(logoFloat, { toValue: 0, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     );
-    pulse.start();
-    return () => pulse.stop();
-  }, [dotPulse]);
+    float.start();
+    return () => float.stop();
+  }, [fadeAnim, slideUp, logoFloat]);
 
   useEffect(() => {
     if (step === 'input') {
-      carouselTimer.current = setInterval(() => {
-        setCarouselIndex((prev) => {
-          const next = (prev + 1) % CAROUSEL_SLIDES.length;
-          carouselRef.current?.scrollTo({ x: next * (SCREEN_WIDTH - 80), animated: true });
+      featureTimer.current = setInterval(() => {
+        setFeatureIndex((prev) => {
+          const next = (prev + 1) % FEATURES.length;
+          featureScrollRef.current?.scrollTo({ x: next * (SCREEN_WIDTH - 64), animated: true });
           return next;
         });
-      }, 3500);
+      }, 3000);
       return () => {
-        if (carouselTimer.current) clearInterval(carouselTimer.current);
+        if (featureTimer.current) clearInterval(featureTimer.current);
       };
     } else {
-      if (carouselTimer.current) clearInterval(carouselTimer.current);
+      if (featureTimer.current) clearInterval(featureTimer.current);
     }
   }, [step]);
 
@@ -174,6 +161,10 @@ export default function LoginScreen() {
     );
   }, [countrySearch]);
 
+  const getLang = useCallback(() => {
+    return tr('common', 'save') === 'Saqlash' ? 'uz' : tr('common', 'save') === 'Сохранить' ? 'ru' : 'en';
+  }, [tr]);
+
   const switchTab = useCallback((tab: LoginMethod) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setActiveTab(tab);
@@ -182,10 +173,10 @@ export default function LoginScreen() {
 
   const shakeInput = useCallback(() => {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 6, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -6, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 12, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -12, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 8, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -8, duration: 50, useNativeDriver: true }),
       Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
     ]).start();
   }, [shakeAnim]);
@@ -388,7 +379,7 @@ export default function LoginScreen() {
   const currentIdentifier = activeTab === 'email' ? email.trim() : getFullPhoneNumber();
 
   const handleButtonPressIn = useCallback(() => {
-    Animated.spring(buttonScale, { toValue: 0.95, friction: 8, useNativeDriver: true }).start();
+    Animated.spring(buttonScale, { toValue: 0.96, friction: 8, useNativeDriver: true }).start();
   }, [buttonScale]);
 
   const handleButtonPressOut = useCallback(() => {
@@ -402,57 +393,59 @@ export default function LoginScreen() {
     setCountrySearch('');
   }, []);
 
-  const handleCarouselScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const handleFeatureScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = e.nativeEvent.contentOffset.x;
-    const slideWidth = SCREEN_WIDTH - 80;
+    const slideWidth = SCREEN_WIDTH - 64;
     const index = Math.round(offsetX / slideWidth);
-    setCarouselIndex(index);
+    setFeatureIndex(index);
   }, []);
 
-  const getSlideTitle = useCallback((slide: typeof CAROUSEL_SLIDES[0]) => {
-    const lang = tr('common', 'save') === 'Saqlash' ? 'uz' : tr('common', 'save') === 'Сохранить' ? 'ru' : 'en';
-    if (lang === 'ru') return slide.titleRu;
-    if (lang === 'en') return slide.titleEn;
-    return slide.titleUz;
-  }, [tr]);
+  const getFeatureTitle = useCallback((f: typeof FEATURES[0]) => {
+    const lang = getLang();
+    if (lang === 'ru') return f.titleRu;
+    if (lang === 'en') return f.titleEn;
+    return f.titleUz;
+  }, [getLang]);
 
-  const getSlideDesc = useCallback((slide: typeof CAROUSEL_SLIDES[0]) => {
-    const lang = tr('common', 'save') === 'Saqlash' ? 'uz' : tr('common', 'save') === 'Сохранить' ? 'ru' : 'en';
-    if (lang === 'ru') return slide.descRu;
-    if (lang === 'en') return slide.descEn;
-    return slide.descUz;
-  }, [tr]);
+  const getFeatureDesc = useCallback((f: typeof FEATURES[0]) => {
+    const lang = getLang();
+    if (lang === 'ru') return f.descRu;
+    if (lang === 'en') return f.descEn;
+    return f.descUz;
+  }, [getLang]);
 
   const renderCountryItem = useCallback(({ item }: { item: CountryCode }) => (
     <TouchableOpacity
       style={[
-        countryItemStyle,
+        styles.countryItem,
         { borderBottomColor: colors.border },
-        item.code === selectedCountry.code && { backgroundColor: colors.primary + '10' },
+        item.code === selectedCountry.code && { backgroundColor: colors.primary + '08' },
       ]}
       onPress={() => handleSelectCountry(item)}
       activeOpacity={0.6}
     >
-      <Text style={{ fontSize: 28, marginRight: 12 }}>{item.flag}</Text>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 16, fontWeight: '500' as const, color: colors.text }}>{item.name}</Text>
-        <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>{item.code}</Text>
+      <Text style={styles.countryItemFlag}>{item.flag}</Text>
+      <View style={styles.countryItemInfo}>
+        <Text style={[styles.countryItemName, { color: colors.text }]}>{item.name}</Text>
+        <Text style={[styles.countryItemCode, { color: colors.textTertiary }]}>{item.code}</Text>
       </View>
-      <Text style={{ fontSize: 16, fontWeight: '600' as const, color: colors.textSecondary }}>{item.dial}</Text>
+      <Text style={[styles.countryItemDial, { color: colors.textSecondary }]}>{item.dial}</Text>
       {item.code === selectedCountry.code && (
         <Check size={18} color={colors.primary} style={{ marginLeft: 8 }} />
       )}
     </TouchableOpacity>
   ), [colors, selectedCountry, handleSelectCountry]);
 
-  const getOtpBoxBorderColor = useCallback((index: number) => {
-    if (otpSuccess) return '#34C759';
-    if (error && otpDigits.join('').length === OTP_LENGTH) return colors.danger;
-    if (error) return colors.danger;
-    if (focusedOtpIndex === index) return colors.primary;
-    if (otpDigits[index]) return colors.text + '40';
-    return colors.border;
-  }, [otpSuccess, error, otpDigits, focusedOtpIndex, colors]);
+  const getOtpBoxStyle = useCallback((index: number) => {
+    if (otpSuccess) return { borderColor: '#34C759', backgroundColor: '#34C759' + '08' };
+    if (error) return { borderColor: colors.danger, backgroundColor: colors.danger + '06' };
+    if (focusedOtpIndex === index) return { borderColor: colors.text, backgroundColor: colors.surface };
+    if (otpDigits[index]) return { borderColor: colors.border, backgroundColor: colors.surfaceSecondary };
+    return { borderColor: colors.border, backgroundColor: colors.surface };
+  }, [otpSuccess, error, focusedOtpIndex, otpDigits, colors]);
+
+  const accentColor = '#1A1A1A';
+  const isDark = colors.background === '#0E0E10';
 
   const renderInputStep = () => (
     <Animated.View style={{
@@ -460,195 +453,213 @@ export default function LoginScreen() {
       opacity: inputFadeAnim,
       transform: [{ translateY: inputSlideAnim }],
     }}>
-      <View style={styles.heroSection}>
-        <LinearGradient
-          colors={['#0A7B5C', '#0B8F6C', '#10A37F']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.heroBg}
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: 'transparent' }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.inputScrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
         >
-          <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-            <Animated.View style={[styles.heroContent, { transform: [{ scale: heroScale }] }]}>
-              <View style={styles.logoContainer}>
-                <View style={styles.logoCircle}>
-                  <Text style={styles.logoEmoji}>🍃</Text>
-                </View>
-                <Text style={styles.brandName}>NutriUZ</Text>
-              </View>
-
-              <Text style={styles.heroTitle}>{tr('login', 'welcome')}</Text>
-              <Text style={styles.heroSubtitle}>{tr('login', 'appDescription')}</Text>
-
-              <View style={styles.carouselContainer}>
-                <ScrollView
-                  ref={carouselRef}
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  onMomentumScrollEnd={handleCarouselScroll}
-                  contentContainerStyle={{ paddingHorizontal: 0 }}
-                  decelerationRate="fast"
-                  snapToInterval={SCREEN_WIDTH - 80}
-                  snapToAlignment="start"
-                >
-                  {CAROUSEL_SLIDES.map((slide, i) => {
-                    const IconComp = slide.icon;
-                    return (
-                      <View key={i} style={[styles.carouselSlide, { width: SCREEN_WIDTH - 80 }]}>
-                        <View style={styles.slideCard}>
-                          <View style={[styles.slideIconWrap, { backgroundColor: slide.bg }]}>
-                            <IconComp size={22} color={slide.color} />
-                          </View>
-                          <View style={styles.slideTextWrap}>
-                            <Text style={styles.slideTitle}>{getSlideTitle(slide)}</Text>
-                            <Text style={styles.slideDesc} numberOfLines={2}>{getSlideDesc(slide)}</Text>
-                          </View>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </ScrollView>
-                <View style={styles.dotsRow}>
-                  {CAROUSEL_SLIDES.map((_, i) => (
-                    <Animated.View
-                      key={i}
-                      style={[
-                        styles.dot,
-                        i === carouselIndex && styles.dotActive,
-                        i === carouselIndex && { transform: [{ scale: dotPulse }] },
-                      ]}
-                    />
-                  ))}
-                </View>
+          <View style={styles.headerSection}>
+            <Animated.View style={[styles.logoWrap, { transform: [{ translateY: logoFloat }] }]}>
+              <View style={[styles.logoBox, { backgroundColor: isDark ? '#1C3D2E' : '#E8F5EE' }]}>
+                <Leaf size={28} color={colors.primary} strokeWidth={2.5} />
               </View>
             </Animated.View>
-          </SafeAreaView>
-        </LinearGradient>
-      </View>
 
-      <View style={[styles.formCard, { backgroundColor: colors.background }]}>
-        <View style={[styles.tabRow, { backgroundColor: colors.surfaceSecondary }]}>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'phone' && [styles.tabButtonActive, { backgroundColor: colors.surface }]]}
-            onPress={() => switchTab('phone')}
-            activeOpacity={0.7}
-            testID="tab-phone"
-          >
-            <Phone size={15} color={activeTab === 'phone' ? colors.primary : colors.textTertiary} style={{ marginRight: 6 }} />
-            <Text style={[styles.tabText, { color: colors.textTertiary }, activeTab === 'phone' && { color: colors.primary, fontWeight: '600' as const }]}>
-              {tr('login', 'phoneTab')}
+            <Text style={[styles.appName, { color: colors.text }]}>NutriUZ</Text>
+            <Text style={[styles.welcomeTitle, { color: colors.text }]}>{tr('login', 'welcome')}</Text>
+            <Text style={[styles.welcomeDesc, { color: colors.textSecondary }]}>
+              {tr('login', 'appDescription')}
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'email' && [styles.tabButtonActive, { backgroundColor: colors.surface }]]}
-            onPress={() => switchTab('email')}
-            activeOpacity={0.7}
-            testID="tab-email"
-          >
-            <Mail size={15} color={activeTab === 'email' ? colors.primary : colors.textTertiary} style={{ marginRight: 6 }} />
-            <Text style={[styles.tabText, { color: colors.textTertiary }, activeTab === 'email' && { color: colors.primary, fontWeight: '600' as const }]}>
-              {tr('login', 'emailTab')}
-            </Text>
-          </TouchableOpacity>
-        </View>
+          </View>
 
-        <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
-          {activeTab === 'phone' ? (
-            <View style={styles.phoneInputRow}>
+          <View style={styles.featuresSection}>
+            <ScrollView
+              ref={featureScrollRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={handleFeatureScroll}
+              decelerationRate="fast"
+              snapToInterval={SCREEN_WIDTH - 64}
+              snapToAlignment="start"
+            >
+              {FEATURES.map((feature, i) => {
+                const IconComp = feature.icon;
+                return (
+                  <View key={i} style={[styles.featureSlide, { width: SCREEN_WIDTH - 64 }]}>
+                    <View style={[styles.featureCard, {
+                      backgroundColor: isDark ? colors.surface : '#F8F8FA',
+                      borderColor: isDark ? colors.border : '#EFEFEF',
+                    }]}>
+                      <View style={[styles.featureIconBox, { backgroundColor: colors.primary + '12' }]}>
+                        <IconComp size={18} color={colors.primary} strokeWidth={2} />
+                      </View>
+                      <View style={styles.featureTextWrap}>
+                        <Text style={[styles.featureTitle, { color: colors.text }]}>{getFeatureTitle(feature)}</Text>
+                        <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>{getFeatureDesc(feature)}</Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
+            <View style={styles.dotsRow}>
+              {FEATURES.map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.dot,
+                    { backgroundColor: i === featureIndex ? colors.text : colors.border },
+                    i === featureIndex && styles.dotActive,
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.formSection}>
+            <View style={[styles.segmentControl, { backgroundColor: isDark ? colors.surfaceSecondary : '#F0F0F2' }]}>
               <TouchableOpacity
                 style={[
-                  styles.countrySelector,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
-                  inputFocused && { borderColor: colors.primary },
+                  styles.segmentBtn,
+                  activeTab === 'phone' && [styles.segmentBtnActive, { backgroundColor: isDark ? colors.surface : '#FFFFFF' }],
                 ]}
-                onPress={() => {
-                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setCountryPickerVisible(true);
-                }}
+                onPress={() => switchTab('phone')}
                 activeOpacity={0.7}
-                testID="country-selector"
+                testID="tab-phone"
               >
-                <Text style={styles.countryFlag}>{selectedCountry.flag}</Text>
-                <Text style={[styles.countryDial, { color: colors.text }]}>{selectedCountry.dial}</Text>
-                <ChevronDown size={14} color={colors.textTertiary} />
+                <Phone size={14} color={activeTab === 'phone' ? colors.text : colors.textTertiary} style={{ marginRight: 5 }} />
+                <Text style={[
+                  styles.segmentText,
+                  { color: activeTab === 'phone' ? colors.text : colors.textTertiary },
+                  activeTab === 'phone' && styles.segmentTextActive,
+                ]}>
+                  {tr('login', 'phoneTab')}
+                </Text>
               </TouchableOpacity>
-              <TextInput
+              <TouchableOpacity
                 style={[
-                  styles.phoneInput,
-                  { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text },
-                  inputFocused && { borderColor: colors.primary },
-                  error ? { borderColor: colors.danger } : null,
+                  styles.segmentBtn,
+                  activeTab === 'email' && [styles.segmentBtnActive, { backgroundColor: isDark ? colors.surface : '#FFFFFF' }],
                 ]}
-                value={phone}
-                onChangeText={(val) => { setPhone(val); setError(''); }}
-                placeholder={tr('login', 'phonePlaceholder')}
-                placeholderTextColor={colors.textTertiary}
-                keyboardType="phone-pad"
-                onFocus={() => setInputFocused(true)}
-                onBlur={() => setInputFocused(false)}
-                testID="input-phone"
-              />
+                onPress={() => switchTab('email')}
+                activeOpacity={0.7}
+                testID="tab-email"
+              >
+                <Mail size={14} color={activeTab === 'email' ? colors.text : colors.textTertiary} style={{ marginRight: 5 }} />
+                <Text style={[
+                  styles.segmentText,
+                  { color: activeTab === 'email' ? colors.text : colors.textTertiary },
+                  activeTab === 'email' && styles.segmentTextActive,
+                ]}>
+                  {tr('login', 'emailTab')}
+                </Text>
+              </TouchableOpacity>
             </View>
-          ) : (
-            <TextInput
-              style={[
-                styles.emailInput,
-                { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text },
-                inputFocused && { borderColor: colors.primary },
-                error ? { borderColor: colors.danger } : null,
-              ]}
-              value={email}
-              onChangeText={(val) => { setEmail(val); setError(''); }}
-              placeholder={tr('login', 'emailPlaceholder')}
-              placeholderTextColor={colors.textTertiary}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
-              testID="input-email"
-            />
-          )}
-        </Animated.View>
 
-        {error ? <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text> : null}
-
-        <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-          <TouchableOpacity
-            style={[
-              styles.mainButton,
-              (!isInputValid || isLoading) && styles.mainButtonDisabled,
-            ]}
-            onPress={handleSendCode}
-            onPressIn={handleButtonPressIn}
-            onPressOut={handleButtonPressOut}
-            disabled={!isInputValid || isLoading}
-            activeOpacity={0.8}
-            testID="send-code-button"
-          >
-            <LinearGradient
-              colors={(!isInputValid || isLoading) ? ['#C8C8CC', '#AEAEB2'] : ['#0A7B5C', '#10A37F']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.mainButtonGradient}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+            <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+              {activeTab === 'phone' ? (
+                <View style={styles.phoneRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.countryBtn,
+                      {
+                        backgroundColor: isDark ? colors.surface : '#F8F8FA',
+                        borderColor: inputFocused ? colors.text : (isDark ? colors.border : '#E8E8EC'),
+                      },
+                    ]}
+                    onPress={() => {
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setCountryPickerVisible(true);
+                    }}
+                    activeOpacity={0.7}
+                    testID="country-selector"
+                  >
+                    <Text style={styles.flagText}>{selectedCountry.flag}</Text>
+                    <Text style={[styles.dialText, { color: colors.text }]}>{selectedCountry.dial}</Text>
+                    <ChevronDown size={12} color={colors.textTertiary} />
+                  </TouchableOpacity>
+                  <TextInput
+                    style={[
+                      styles.phoneInput,
+                      {
+                        backgroundColor: isDark ? colors.surface : '#F8F8FA',
+                        borderColor: inputFocused ? colors.text : (isDark ? colors.border : '#E8E8EC'),
+                        color: colors.text,
+                      },
+                      error ? { borderColor: colors.danger } : null,
+                    ]}
+                    value={phone}
+                    onChangeText={(val) => { setPhone(val); setError(''); }}
+                    placeholder={tr('login', 'phonePlaceholder')}
+                    placeholderTextColor={colors.textTertiary}
+                    keyboardType="phone-pad"
+                    onFocus={() => setInputFocused(true)}
+                    onBlur={() => setInputFocused(false)}
+                    testID="input-phone"
+                  />
+                </View>
               ) : (
-                <>
-                  <Text style={styles.mainButtonText}>{tr('login', 'sendCode')}</Text>
-                  <ChevronRight size={20} color="#FFFFFF" />
-                </>
+                <TextInput
+                  style={[
+                    styles.emailInput,
+                    {
+                      backgroundColor: isDark ? colors.surface : '#F8F8FA',
+                      borderColor: inputFocused ? colors.text : (isDark ? colors.border : '#E8E8EC'),
+                      color: colors.text,
+                    },
+                    error ? { borderColor: colors.danger } : null,
+                  ]}
+                  value={email}
+                  onChangeText={(val) => { setEmail(val); setError(''); }}
+                  placeholder={tr('login', 'emailPlaceholder')}
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onFocus={() => setInputFocused(true)}
+                  onBlur={() => setInputFocused(false)}
+                  testID="input-email"
+                />
               )}
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
+            </Animated.View>
 
-        <View style={styles.secureRow}>
-          <Shield size={12} color={colors.textTertiary} />
-          <Text style={[styles.termsText, { color: colors.textTertiary }]}>{tr('login', 'termsText')}</Text>
-        </View>
-      </View>
+            {error ? <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text> : null}
+
+            <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+              <TouchableOpacity
+                style={[
+                  styles.sendBtn,
+                  { backgroundColor: isDark ? '#FFFFFF' : accentColor },
+                  (!isInputValid || isLoading) && { opacity: 0.35 },
+                ]}
+                onPress={handleSendCode}
+                onPressIn={handleButtonPressIn}
+                onPressOut={handleButtonPressOut}
+                disabled={!isInputValid || isLoading}
+                activeOpacity={0.8}
+                testID="send-code-button"
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color={isDark ? '#000000' : '#FFFFFF'} />
+                ) : (
+                  <Text style={[styles.sendBtnText, { color: isDark ? '#000000' : '#FFFFFF' }]}>
+                    {tr('login', 'sendCode')}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </Animated.View>
+
+            <View style={styles.termsRow}>
+              <Lock size={11} color={colors.textTertiary} />
+              <Text style={[styles.termsText, { color: colors.textTertiary }]}>{tr('login', 'termsText')}</Text>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     </Animated.View>
   );
 
@@ -658,41 +669,48 @@ export default function LoginScreen() {
       opacity: otpFadeAnim,
       transform: [{ translateY: otpSlideAnim }],
     }}>
-      <View style={[styles.otpContainer, { backgroundColor: colors.background }]}>
-        <SafeAreaView edges={['top']} style={{ flex: 1 }}>
-          <View style={styles.otpInner}>
-            <TouchableOpacity style={styles.otpBackRow} onPress={handleGoBack} activeOpacity={0.6} disabled={isVerifying}>
-              <View style={[styles.backButton, { backgroundColor: colors.surfaceSecondary }]}>
-                <ArrowLeft size={20} color={colors.text} />
-              </View>
-            </TouchableOpacity>
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: 'transparent' }}>
+        <View style={styles.otpContainer}>
+          <TouchableOpacity
+            style={[styles.backBtn, { backgroundColor: isDark ? colors.surfaceSecondary : '#F0F0F2' }]}
+            onPress={handleGoBack}
+            activeOpacity={0.6}
+            disabled={isVerifying}
+          >
+            <ArrowLeft size={20} color={colors.text} />
+          </TouchableOpacity>
 
-            <View style={styles.otpHeader}>
-              <View style={[styles.otpIconCircle, { backgroundColor: colors.primary + '15' }]}>
-                <Mail size={28} color={colors.primary} />
-              </View>
-              <Text style={[styles.otpTitle, { color: colors.text }]}>{tr('login', 'otpTitle')}</Text>
-              <Text style={[styles.otpSubtitle, { color: colors.textSecondary }]}>
-                {tr('login', 'otpSubtitle').replace('{target}', '')}
-              </Text>
-              <View style={[styles.identifierBadge, { backgroundColor: colors.surfaceSecondary }]}>
-                <Text style={[styles.otpIdentifier, { color: colors.text }]}>{currentIdentifier}</Text>
-              </View>
+          <View style={styles.otpHeader}>
+            <View style={[styles.otpIconWrap, { backgroundColor: isDark ? colors.surfaceSecondary : '#F0F0F2' }]}>
+              <Lock size={24} color={colors.text} strokeWidth={1.5} />
             </View>
+            <Text style={[styles.otpTitle, { color: colors.text }]}>{tr('login', 'otpTitle')}</Text>
+            <Text style={[styles.otpSubtitle, { color: colors.textSecondary }]}>
+              {tr('login', 'otpSubtitle').replace('{target}', '')}
+            </Text>
+            <View style={[styles.identifierChip, { backgroundColor: isDark ? colors.surfaceSecondary : '#F0F0F2' }]}>
+              <Text style={[styles.identifierText, { color: colors.text }]}>{currentIdentifier}</Text>
+            </View>
+          </View>
 
-            <Animated.View style={[styles.otpRow, { transform: [{ translateX: shakeAnim }] }]}>
-              {otpDigits.map((digit, index) => (
+          <Animated.View style={[styles.otpRow, { transform: [{ translateX: shakeAnim }] }]}>
+            {otpDigits.map((digit, index) => {
+              const boxStyle = getOtpBoxStyle(index);
+              return (
                 <TextInput
                   key={index}
                   ref={(ref) => { otpInputRefs.current[index] = ref; }}
                   style={[
                     styles.otpBox,
                     {
-                      borderColor: getOtpBoxBorderColor(index),
-                      backgroundColor: otpSuccess ? '#34C759' + '12' : digit ? colors.surfaceSecondary : colors.surface,
+                      borderColor: boxStyle.borderColor,
+                      backgroundColor: boxStyle.backgroundColor,
                       color: colors.text,
                     },
-                    focusedOtpIndex === index && !otpSuccess && !error && { borderWidth: 2.5, borderColor: colors.primary },
+                    focusedOtpIndex === index && !otpSuccess && !error && {
+                      borderColor: colors.text,
+                      borderWidth: 2,
+                    },
                   ]}
                   value={digit}
                   onChangeText={(text) => handleOTPChange(text, index)}
@@ -705,42 +723,43 @@ export default function LoginScreen() {
                   editable={!isVerifying && !otpSuccess}
                   testID={`otp-input-${index}`}
                 />
-              ))}
-            </Animated.View>
+              );
+            })}
+          </Animated.View>
 
-            {isVerifying && (
-              <View style={styles.otpVerifyingRow}>
-                <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={[styles.otpVerifyingText, { color: colors.textSecondary }]}>{tr('login', 'verifying')}</Text>
-              </View>
-            )}
-
-            {error && !isVerifying ? (
-              <Text style={[styles.errorText, { textAlign: 'center' as const, marginTop: 4, color: colors.danger }]}>{error}</Text>
-            ) : null}
-
-            <View style={styles.resendRow}>
-              <TouchableOpacity
-                onPress={handleResendCode}
-                disabled={resendTimer > 0 || isLoading || isVerifying}
-                activeOpacity={0.6}
-                style={[styles.resendButton, { backgroundColor: resendTimer > 0 ? 'transparent' : colors.primary + '10' }]}
-              >
-                <Text style={[styles.resendText, { color: colors.primary }, (resendTimer > 0 || isVerifying) && { color: colors.textTertiary }]}>
-                  {resendTimer > 0
-                    ? tr('login', 'resendIn').replace('{sec}', resendTimer.toString())
-                    : tr('login', 'resendCode')}
-                </Text>
-              </TouchableOpacity>
+          {isVerifying && (
+            <View style={styles.verifyingRow}>
+              <ActivityIndicator size="small" color={colors.textSecondary} />
+              <Text style={[styles.verifyingText, { color: colors.textSecondary }]}>{tr('login', 'verifying')}</Text>
             </View>
-          </View>
-        </SafeAreaView>
-      </View>
+          )}
+
+          {error && !isVerifying ? (
+            <Text style={[styles.otpError, { color: colors.danger }]}>{error}</Text>
+          ) : null}
+
+          <TouchableOpacity
+            onPress={handleResendCode}
+            disabled={resendTimer > 0 || isLoading || isVerifying}
+            activeOpacity={0.6}
+            style={styles.resendBtn}
+          >
+            <Text style={[
+              styles.resendText,
+              { color: resendTimer > 0 || isVerifying ? colors.textTertiary : colors.primary },
+            ]}>
+              {resendTimer > 0
+                ? tr('login', 'resendIn').replace('{sec}', resendTimer.toString())
+                : tr('login', 'resendCode')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
 
       {successAnim && (
-        <View style={[styles.successOverlay, { backgroundColor: colors.background + 'F0' }]}>
+        <View style={[styles.successOverlay, { backgroundColor: colors.background + 'F2' }]}>
           <Animated.View style={[styles.successCircle, { transform: [{ scale: successScale }] }]}>
-            <Check size={40} color="#FFFFFF" strokeWidth={3} />
+            <Check size={36} color="#FFFFFF" strokeWidth={3} />
           </Animated.View>
         </View>
       )}
@@ -779,23 +798,23 @@ export default function LoginScreen() {
             setCountrySearch('');
           }}
         >
-          <TouchableOpacity activeOpacity={1} style={[styles.modalContent, { backgroundColor: colors.background }]}>
+          <TouchableOpacity activeOpacity={1} style={[styles.modalSheet, { backgroundColor: colors.background }]}>
             <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
-            <View style={styles.modalHeader}>
+            <View style={styles.modalTop}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Davlatni tanlang</Text>
               <TouchableOpacity
-                style={[styles.modalCloseBtn, { backgroundColor: colors.surfaceSecondary }]}
+                style={[styles.modalClose, { backgroundColor: colors.surfaceSecondary }]}
                 onPress={() => {
                   setCountryPickerVisible(false);
                   setCountrySearch('');
                 }}
               >
-                <X size={18} color={colors.text} />
+                <X size={16} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            <View style={[styles.searchContainer, { backgroundColor: colors.surfaceSecondary }]}>
-              <Search size={18} color={colors.textTertiary} />
+            <View style={[styles.searchBox, { backgroundColor: isDark ? colors.surfaceSecondary : '#F0F0F2' }]}>
+              <Search size={16} color={colors.textTertiary} />
               <TextInput
                 style={[styles.searchInput, { color: colors.text }]}
                 value={countrySearch}
@@ -807,7 +826,7 @@ export default function LoginScreen() {
               />
               {countrySearch.length > 0 && (
                 <TouchableOpacity onPress={() => setCountrySearch('')}>
-                  <X size={16} color={colors.textTertiary} />
+                  <X size={14} color={colors.textTertiary} />
                 </TouchableOpacity>
               )}
             </View>
@@ -831,254 +850,222 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  heroSection: {
-    flex: 1,
-    minHeight: SCREEN_HEIGHT * 0.52,
-  },
-  heroBg: {
-    flex: 1,
-    overflow: 'hidden',
-  },
-  heroContent: {
-    flex: 1,
+  inputScrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 28,
-    paddingTop: 16,
     justifyContent: 'center',
+    paddingBottom: 20,
   },
-  logoContainer: {
-    flexDirection: 'row',
+  headerSection: {
     alignItems: 'center',
-    marginBottom: 24,
-  },
-  logoCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  logoEmoji: {
-    fontSize: 22,
-  },
-  brandName: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-  },
-  heroTitle: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -1,
-    lineHeight: 40,
-    marginBottom: 8,
-  },
-  heroSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    lineHeight: 22,
     marginBottom: 28,
   },
-  carouselContainer: {
-    marginBottom: 8,
+  logoWrap: {
+    marginBottom: 16,
   },
-  carouselSlide: {
-    paddingRight: 12,
-  },
-  slideCard: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
+  logoBox: {
+    width: 56,
+    height: 56,
     borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  slideIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  slideTextWrap: {
+  appName: {
+    fontSize: 17,
+    fontWeight: '600' as const,
+    letterSpacing: 0.5,
+    marginBottom: 20,
+    opacity: 0.5,
+  },
+  welcomeTitle: {
+    fontSize: 30,
+    fontWeight: '700' as const,
+    letterSpacing: -0.8,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  welcomeDesc: {
+    fontSize: 15,
+    lineHeight: 21,
+    textAlign: 'center',
+  },
+  featuresSection: {
+    marginBottom: 32,
+    marginHorizontal: -28,
+    paddingHorizontal: 4,
+  },
+  featureSlide: {
+    paddingHorizontal: 28,
+  },
+  featureCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+  },
+  featureIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  featureTextWrap: {
     flex: 1,
   },
-  slideTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 3,
+  featureTitle: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    marginBottom: 2,
   },
-  slideDesc: {
+  featureDesc: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
     lineHeight: 16,
   },
   dotsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 6,
-    marginTop: 16,
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 14,
   },
   dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
   dotActive: {
-    width: 22,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 3,
+    width: 18,
+    borderRadius: 2.5,
   },
-  formCard: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: Platform.OS === 'ios' ? 32 : 24,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    marginTop: -24,
+  formSection: {
+    paddingBottom: 8,
   },
-  tabRow: {
+  segmentControl: {
     flexDirection: 'row',
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 3,
-    marginBottom: 20,
+    marginBottom: 18,
   },
-  tabButton: {
+  segmentBtn: {
     flex: 1,
-    paddingVertical: 11,
-    borderRadius: 11,
+    paddingVertical: 10,
+    borderRadius: 10,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
   },
-  tabButtonActive: {
+  segmentBtnActive: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
-    shadowRadius: 6,
+    shadowRadius: 4,
     elevation: 2,
   },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '500',
+  segmentText: {
+    fontSize: 13,
+    fontWeight: '500' as const,
   },
-  phoneInputRow: {
+  segmentTextActive: {
+    fontWeight: '600' as const,
+  },
+  phoneRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
+    gap: 8,
+    marginBottom: 12,
   },
-  countrySelector: {
+  countryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
-    height: 52,
-    paddingHorizontal: 12,
-    borderWidth: 1.5,
+    borderRadius: 12,
+    height: 50,
+    paddingHorizontal: 10,
+    borderWidth: 1,
     gap: 4,
   },
-  countryFlag: {
-    fontSize: 20,
+  flagText: {
+    fontSize: 18,
   },
-  countryDial: {
-    fontSize: 15,
-    fontWeight: '600',
+  dialText: {
+    fontSize: 14,
+    fontWeight: '500' as const,
   },
   phoneInput: {
     flex: 1,
-    borderRadius: 14,
-    height: 52,
-    paddingHorizontal: 16,
+    borderRadius: 12,
+    height: 50,
+    paddingHorizontal: 14,
     fontSize: 16,
-    borderWidth: 1.5,
+    borderWidth: 1,
   },
   emailInput: {
-    borderRadius: 14,
-    height: 52,
-    paddingHorizontal: 18,
+    borderRadius: 12,
+    height: 50,
+    paddingHorizontal: 16,
     fontSize: 16,
-    borderWidth: 1.5,
-    marginBottom: 14,
+    borderWidth: 1,
+    marginBottom: 12,
   },
   errorText: {
     fontSize: 13,
     marginBottom: 10,
-    marginLeft: 4,
+    marginLeft: 2,
   },
-  mainButton: {
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  mainButtonDisabled: {
-    opacity: 0.7,
-  },
-  mainButtonGradient: {
-    height: 52,
-    borderRadius: 14,
+  sendBtn: {
+    height: 50,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
   },
-  mainButtonText: {
+  sendBtnText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: '600' as const,
   },
-  secureRow: {
+  termsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 5,
     marginTop: 16,
   },
   termsText: {
     fontSize: 11,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 15,
   },
   otpContainer: {
     flex: 1,
+    paddingHorizontal: 28,
+    paddingTop: 8,
   },
-  otpInner: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 12,
-  },
-  otpBackRow: {
-    marginBottom: 24,
-  },
-  backButton: {
+  backBtn: {
     width: 40,
     height: 40,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 28,
   },
   otpHeader: {
     alignItems: 'center',
     marginBottom: 36,
   },
-  otpIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
+  otpIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
   },
   otpTitle: {
     fontSize: 26,
-    fontWeight: '700',
+    fontWeight: '700' as const,
     letterSpacing: -0.5,
-    marginBottom: 8,
-    textAlign: 'center',
+    marginBottom: 6,
   },
   otpSubtitle: {
     fontSize: 14,
@@ -1086,53 +1073,55 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 12,
   },
-  identifierBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 10,
+  identifierChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
   },
-  otpIdentifier: {
-    fontSize: 15,
-    fontWeight: '600',
+  identifierText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
   },
   otpRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 20,
     justifyContent: 'center',
+    marginBottom: 20,
   },
   otpBox: {
-    width: (SCREEN_WIDTH - 48 - 40) / 6,
-    height: 56,
-    borderRadius: 14,
-    borderWidth: 2,
+    width: (SCREEN_WIDTH - 56 - 40) / 6,
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1.5,
     textAlign: 'center',
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '700' as const,
   },
-  otpVerifyingRow: {
+  verifyingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    paddingVertical: 6,
+  },
+  verifyingText: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+  },
+  otpError: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  resendBtn: {
+    alignSelf: 'center',
+    marginTop: 24,
+    paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  otpVerifyingText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  resendRow: {
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  resendButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
   resendText: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '500' as const,
   },
   successOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -1141,70 +1130,88 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   successCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: '#34C759',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-end',
   },
-  modalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+  modalSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     maxHeight: '80%',
-    paddingTop: 12,
+    paddingTop: 10,
   },
   modalHandle: {
-    width: 40,
+    width: 36,
     height: 4,
     borderRadius: 2,
     alignSelf: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  modalHeader: {
+  modalTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '600' as const,
   },
-  modalCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  modalClose: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  searchContainer: {
+  searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 10,
     marginHorizontal: 20,
     marginBottom: 8,
-    paddingHorizontal: 12,
-    height: 44,
+    paddingHorizontal: 10,
+    height: 40,
     gap: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     paddingVertical: 0,
   },
+  countryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 13,
+    paddingHorizontal: 20,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  countryItemFlag: {
+    fontSize: 26,
+    marginRight: 12,
+  },
+  countryItemInfo: {
+    flex: 1,
+  },
+  countryItemName: {
+    fontSize: 15,
+    fontWeight: '500' as const,
+  },
+  countryItemCode: {
+    fontSize: 12,
+    marginTop: 1,
+  },
+  countryItemDial: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+  },
 });
-
-const countryItemStyle: Record<string, string | number> = {
-  flexDirection: 'row',
-  alignItems: 'center',
-  paddingVertical: 14,
-  paddingHorizontal: 20,
-  borderBottomWidth: StyleSheet.hairlineWidth,
-};
