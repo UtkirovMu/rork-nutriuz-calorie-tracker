@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<!--
+  body_viewer.html
+  ------------------------------------------------------------
+  Bu fayl WebView ICHIDA ishlaydi — RN native modul EMAS.
+  Three.js kutubxonasi CDN'dan yuklanadi (yoki xohlasangiz
+  offline uchun lokal fayl sifatida ham joylashtirish mumkin).
+
+  RN tomondan `postMessage(JSON.stringify({weight, muscle}))`
+  chaqirilganda, model shu qiymatlarga silliq deformatsiyalanadi.
+-->
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <style>
+    html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; height: 100%; }
+    canvas { display: block; touch-action: none; }
+  </style>
+</head>
+<body>
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://unpkg.com/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+
+  <script>
+    // ---------- Scene setup ----------
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 1.4, 2.6);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.body.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
+    dirLight.position.set(2, 4, 3);
+    scene.add(dirLight);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
+    fillLight.position.set(-2, 2, -3);
+    scene.add(fillLight);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enablePan = false;
+    controls.minDistance = 1.5;
+    controls.maxDistance = 4;
+    controls.target.set(0, 1, 0);
+
+    // ---------- State: RN dan keladigan maqsad qiymatlar ----------
+    let targetWeight = 0;
+    let targetMuscle = 0;
+    let currentWeight = 0;
+    let currentMuscle = 0;
+    let bodyMesh = null;
+
+    function postToRN(payload) {
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify(payload));
+      }
+    }
+
+    // RN'dan xabar kelganda (weight/muscle yangilanishi)
+    document.addEventListener('message', handleMessage); // Android
+    window.addEventListener('message', handleMessage);   // iOS
+
+    function handleMessage(event) {
+      try {
+        const data = JSON.parse(event.data);
+        if (typeof data.weight === 'number') targetWeight = clamp01(data.weight);
+        if (typeof data.muscle === 'number') targetMuscle = clamp01(data.muscle);
+      } catch (e) {
+        postToRN({ type: 'error', message: 'Bad message: ' + String(e) });
+      }
+    }
+
+    function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+
+    // ---------- Model yuklash ----------
+    // MODEL_URL ni RN tomondan inject qilingan skript orqali yoki
+    // to'g'ridan-to'g'ri shu yerga URL sifatida yozib qo'yish mumkin.
+    const MODEL_URL = window.__BODY_MODEL_URL__ || 'https://example.com/body_final.glb';
+
+    const loader = new THREE.GLTFLoader();
+    loader.load(
+      MODEL_URL,
+      (gltf) => {
+        scene.add(gltf.scene);
+        gltf.scene.traverse((child) => {
+          if (child.isMesh && child.morphTargetDictionary) {
+            bodyMesh = child;
+          }
+        });
+        postToRN({ type: 'loaded', hasMesh: !!bodyMesh });
+      },
+      undefined,
+      (err) => {
+        postToRN({ type: 'error', message: 'Model load failed: ' + String(err) });
+      }
+    );
+
+    // ---------- Animatsiya sikli ----------
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const lerpSpeed = 0.05;
+      currentWeight += (targetWeight - currentWeight) * lerpSpeed;
+      currentMuscle += (targetMuscle - currentMuscle) * lerpSpeed;
+
+      if (bodyMesh && bodyMesh.morphTargetInfluences && bodyMesh.morphTargetDictionary) {
+        const wIdx = bodyMesh.morphTargetDictionary['Weight'];
+        const mIdx = bodyMesh.morphTargetDictionary['Muscle'];
+        if (wIdx !== undefined) bodyMesh.morphTargetInfluences[wIdx] = currentWeight;
+        if (mIdx !== undefined) bodyMesh.morphTargetInfluences[mIdx] = currentMuscle;
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    postToRN({ type: 'ready' });
+  </script>
+</body>
+</html>

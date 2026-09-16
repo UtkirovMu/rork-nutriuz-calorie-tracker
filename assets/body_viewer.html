@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<!--
+  body_viewer.html — Premium Procedural 3D Body Viewer
+  -----------------------------------------------------------
+  Gradient fon, particle effektlar, premium yoritish,
+  glow/bloom, silliq orbit kontrol va responsive dizayn.
+-->
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      overflow: hidden;
+      height: 100%;
+      background: radial-gradient(ellipse at 50% 20%, #1a1a3e 0%, #0d0d1f 50%, #050510 100%);
+      font-family: -apple-system, 'SF Pro Display', 'Segoe UI', sans-serif;
+    }
+    canvas { display: block; touch-action: none; }
+
+    /* Loading overlay */
+    #loading-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at 50% 20%, #1a1a3e 0%, #0d0d1f 50%, #050510 100%);
+      transition: opacity 0.8s ease, visibility 0.8s ease;
+    }
+    #loading-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .loader-ring {
+      width: 48px; height: 48px;
+      border: 3px solid rgba(108, 99, 255, 0.15);
+      border-top-color: #6C63FF;
+      border-radius: 50%;
+      animation: spin 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+    .loader-text {
+      margin-top: 16px;
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Bottom gradient fade */
+    #bottom-fade {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: 100px;
+      background: linear-gradient(to top, rgba(5,5,16,0.9) 0%, transparent 100%);
+      pointer-events: none; z-index: 10;
+    }
+
+    /* Stats HUD */
+    #hud {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      z-index: 20;
+      display: flex; gap: 12px;
+      opacity: 0;
+      transition: opacity 0.6s ease 0.4s;
+    }
+    #hud.visible { opacity: 1; }
+    .hud-pill {
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: 8px 16px;
+      display: flex; align-items: center; gap: 8px;
+      color: rgba(255,255,255,0.7);
+      font-size: 12px; font-weight: 500;
+    }
+    .hud-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+    }
+    .hud-dot.weight { background: #FF6B6B; box-shadow: 0 0 8px rgba(255,107,107,0.5); }
+    .hud-dot.muscle { background: #6C63FF; box-shadow: 0 0 8px rgba(108,99,255,0.5); }
+    .hud-value { color: rgba(255,255,255,0.95); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="loading-overlay">
+    <div class="loader-ring"></div>
+    <div class="loader-text">Initializing</div>
+  </div>
+  <div id="bottom-fade"></div>
+  <div id="hud">
+    <div class="hud-pill">
+      <div class="hud-dot weight"></div>
+      <span>Weight</span>
+      <span class="hud-value" id="hud-weight">30%</span>
+    </div>
+    <div class="hud-pill">
+      <div class="hud-dot muscle"></div>
+      <span>Muscle</span>
+      <span class="hud-value" id="hud-muscle">30%</span>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+
+  <script>
+  (function() {
+    'use strict';
+
+    // ===================== SCENE SETUP =====================
+    const scene = new THREE.Scene();
+    // Subtle fog for depth
+    scene.fog = new THREE.FogExp2(0x0a0a1e, 0.12);
+
+    const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 1.05, 4.2);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setClearColor(0x050510, 1);
+    document.body.appendChild(renderer.domElement);
+
+    // ===================== LIGHTING =====================
+    // Key light — warm
+    const keyLight = new THREE.DirectionalLight(0xffeedd, 1.4);
+    keyLight.position.set(3, 6, 4);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(1024, 1024);
+    keyLight.shadow.camera.near = 0.5;
+    keyLight.shadow.camera.far = 20;
+    keyLight.shadow.camera.left = -3;
+    keyLight.shadow.camera.right = 3;
+    keyLight.shadow.camera.top = 3;
+    keyLight.shadow.camera.bottom = -1;
+    keyLight.shadow.radius = 4;
+    scene.add(keyLight);
+
+    // Fill light — cool
+    const fillLight = new THREE.DirectionalLight(0x8888ff, 0.5);
+    fillLight.position.set(-4, 3, -2);
+    scene.add(fillLight);
+
+    // Rim light — purple accent
+    const rimLight = new THREE.DirectionalLight(0xcc88ff, 0.45);
+    rimLight.position.set(0, 2, -5);
+    scene.add(rimLight);
+
+    // Bottom ambient — subtle floor bounce
+    const bottomLight = new THREE.DirectionalLight(0x6C63FF, 0.15);
+    bottomLight.position.set(0, -2, 1);
+    scene.add(bottomLight);
+
+    // Hemisphere for natural feel
+    const hemiLight = new THREE.HemisphereLight(0x8888cc, 0x222244, 0.35);
+    scene.add(hemiLight);
+
+    // ===================== GROUND PLANE =====================
+    const groundGeom = new THREE.CircleGeometry(3, 64);
+    const groundMat = new THREE.MeshStandardMaterial({
+      color: 0x111128,
+      roughness: 0.85,
+      metalness: 0.1,
+      transparent: true,
+      opacity: 0.6,
+    });
+    const ground = new THREE.Mesh(groundGeom, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.01;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Ground glow ring
+    const ringGeom = new THREE.RingGeometry(0.9, 1.1, 64);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0x6C63FF,
+      transparent: true,
+      opacity: 0.08,
+      side: THREE.DoubleSide,
+    });
+    const ring = new THREE.Mesh(ringGeom, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.005;
+    scene.add(ring);
+
+    // ===================== PARTICLES =====================
+    const PARTICLE_COUNT = 120;
+    const particleGeom = new THREE.BufferGeometry();
+    const pPositions = new Float32Array(PARTICLE_COUNT * 3);
+    const pSizes = new Float32Array(PARTICLE_COUNT);
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      pPositions[i * 3]     = (Math.random() - 0.5) * 6;
+      pPositions[i * 3 + 1] = Math.random() * 4;
+      pPositions[i * 3 + 2] = (Math.random() - 0.5) * 6;
+      pSizes[i] = Math.random() * 3 + 1;
+    }
+    particleGeom.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
+    particleGeom.setAttribute('size', new THREE.BufferAttribute(pSizes, 1));
+
+    const particleMat = new THREE.PointsMaterial({
+      color: 0x6C63FF,
+      size: 0.02,
+      transparent: true,
+      opacity: 0.4,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+    const particles = new THREE.Points(particleGeom, particleMat);
+    scene.add(particles);
+
+    // ===================== ORBIT CONTROLS (Manual) =====================
+    let isDragging = false;
+    let prevX = 0;
+    let rotationY = 0;
+    let rotationVelocity = 0;
+    const bodyGroup = new THREE.Group();
+    scene.add(bodyGroup);
+
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      isDragging = true;
+      prevX = e.clientX;
+      rotationVelocity = 0;
+    });
+    renderer.domElement.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - prevX;
+      rotationVelocity = dx * 0.007;
+      rotationY += rotationVelocity;
+      prevX = e.clientX;
+    });
+    renderer.domElement.addEventListener('pointerup', () => { isDragging = false; });
+    renderer.domElement.addEventListener('pointercancel', () => { isDragging = false; });
+
+    // ===================== MATERIALS =====================
+    const skinMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(0.82, 0.68, 0.58),
+      roughness: 0.48,
+      metalness: 0.02,
+    });
+    const darkMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(0.15, 0.15, 0.2),
+      roughness: 0.65,
+      metalness: 0.08,
+    });
+    const eyeWhiteMat = new THREE.MeshStandardMaterial({
+      color: 0xf0f0f0,
+      roughness: 0.3,
+      metalness: 0.0,
+    });
+    const eyePupilMat = new THREE.MeshStandardMaterial({
+      color: 0x1a1a2e,
+      roughness: 0.2,
+      metalness: 0.1,
+    });
+
+    // ===================== HELPERS =====================
+    function makeCapsule(rTop, rBot, h, rSeg, hSeg, mat) {
+      const g = new THREE.CylinderGeometry(rTop, rBot, h, rSeg, hSeg, false);
+      // Round the caps with hemisphere
+      const m = new THREE.Mesh(g, mat);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      return m;
+    }
+    function makeSphere(r, wS, hS, mat) {
+      const g = new THREE.SphereGeometry(r, wS, hS);
+      const m = new THREE.Mesh(g, mat);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      return m;
+    }
+    function makeRoundedBox(w, h, d, r, mat) {
+      // Approximate with a box + scale
+      const g = new THREE.BoxGeometry(w, h, d, 2, 2, 2);
+      const m = new THREE.Mesh(g, mat);
+      m.castShadow = true;
+      return m;
+    }
+
+    // ===================== BASE DIMENSIONS =====================
+    const B = {
+      headR: 0.15,
+      neckR: 0.058, neckH: 0.07,
+      torsoW: 0.22, torsoH: 0.48, torsoD: 0.14,
+      shoulderR: 0.068,
+      upperArmR: 0.044, upperArmH: 0.28,
+      lowerArmR: 0.036, lowerArmH: 0.26,
+      handR: 0.032,
+      hipW: 0.19,
+      upperLegR: 0.063, upperLegH: 0.38,
+      lowerLegR: 0.046, lowerLegH: 0.36,
+      footH: 0.04, footL: 0.14, footW: 0.068,
+    };
+
+    // ===================== CREATE BODY PARTS =====================
+    const head = makeSphere(B.headR, 28, 22, skinMat);
+    const neck = makeCapsule(B.neckR, B.neckR, B.neckH, 14, 1, skinMat);
+
+    // Torso — ellipsoid
+    const torsoGeom = new THREE.SphereGeometry(1, 28, 22);
+    const torso = new THREE.Mesh(torsoGeom, skinMat);
+    torso.castShadow = true; torso.receiveShadow = true;
+
+    // Chest plate (subtle)
+    const chestGeom = new THREE.SphereGeometry(1, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.5);
+    const chest = new THREE.Mesh(chestGeom, skinMat);
+    chest.castShadow = true;
+
+    const shoulderL = makeSphere(B.shoulderR, 16, 12, skinMat);
+    const shoulderR_m = makeSphere(B.shoulderR, 16, 12, skinMat);
+    const upperArmL = makeCapsule(B.upperArmR, B.upperArmR * 0.88, B.upperArmH, 12, 2, skinMat);
+    const upperArmR_m = makeCapsule(B.upperArmR, B.upperArmR * 0.88, B.upperArmH, 12, 2, skinMat);
+    const lowerArmL = makeCapsule(B.lowerArmR, B.lowerArmR * 0.82, B.lowerArmH, 12, 2, skinMat);
+    const lowerArmR_m = makeCapsule(B.lowerArmR, B.lowerArmR * 0.82, B.lowerArmH, 12, 2, skinMat);
+    const handL = makeSphere(B.handR, 10, 8, skinMat);
+    const handR_m = makeSphere(B.handR, 10, 8, skinMat);
+
+    // Hips — ellipsoid
+    const hipsGeom = new THREE.SphereGeometry(1, 22, 16);
+    const hips = new THREE.Mesh(hipsGeom, skinMat);
+    hips.castShadow = true; hips.receiveShadow = true;
+
+    const upperLegL = makeCapsule(B.upperLegR, B.upperLegR * 0.82, B.upperLegH, 14, 2, darkMat);
+    const upperLegR_m = makeCapsule(B.upperLegR, B.upperLegR * 0.82, B.upperLegH, 14, 2, darkMat);
+    const lowerLegL = makeCapsule(B.lowerLegR, B.lowerLegR * 0.78, B.lowerLegH, 12, 2, skinMat);
+    const lowerLegR_m = makeCapsule(B.lowerLegR, B.lowerLegR * 0.78, B.lowerLegH, 12, 2, skinMat);
+    const footL = makeRoundedBox(B.footW, B.footH, B.footL, 0.01, darkMat);
+    const footR_m = makeRoundedBox(B.footW, B.footH, B.footL, 0.01, darkMat);
+
+    // Eyes
+    const eyeWhiteL = makeSphere(0.025, 10, 8, eyeWhiteMat);
+    const eyeWhiteR = makeSphere(0.025, 10, 8, eyeWhiteMat);
+    const eyePupilL = makeSphere(0.013, 8, 6, eyePupilMat);
+    const eyePupilR = makeSphere(0.013, 8, 6, eyePupilMat);
+
+    // Nose hint
+    const nose = makeSphere(0.022, 8, 6, skinMat);
+
+    // Ear hints
+    const earL = makeSphere(0.028, 8, 6, skinMat);
+    const earR_m = makeSphere(0.028, 8, 6, skinMat);
+
+    bodyGroup.add(
+      head, neck, torso, chest,
+      shoulderL, shoulderR_m,
+      upperArmL, upperArmR_m, lowerArmL, lowerArmR_m,
+      handL, handR_m,
+      hips, upperLegL, upperLegR_m, lowerLegL, lowerLegR_m,
+      footL, footR_m,
+      eyeWhiteL, eyeWhiteR, eyePupilL, eyePupilR,
+      nose, earL, earR_m
+    );
+
+    // ===================== STATE =====================
+    let targetWeight = 0.3;
+    let targetMuscle = 0.3;
+    let currentWeight = 0.3;
+    let currentMuscle = 0.3;
+
+    function postToRN(payload) {
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify(payload));
+      }
+    }
+
+    document.addEventListener('message', handleMessage);
+    window.addEventListener('message', handleMessage);
+
+    function handleMessage(event) {
+      try {
+        const data = JSON.parse(event.data);
+        if (typeof data.weight === 'number') targetWeight = clamp01(data.weight);
+        if (typeof data.muscle === 'number') targetMuscle = clamp01(data.muscle);
+      } catch (e) {
+        postToRN({ type: 'error', message: 'Bad message: ' + String(e) });
+      }
+    }
+
+    function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+
+    // ===================== UPDATE BODY =====================
+    function updateBody(w, m) {
+      const fatScale = 1 + w * 0.45;
+      const bellyScale = 1 + w * 0.6;
+
+      // --- HEAD ---
+      const headY = 1.72 + w * 0.02;
+      head.position.set(0, headY, 0);
+      head.scale.setScalar(1 + w * 0.04);
+
+      // Eyes
+      const eyeSpread = 0.048;
+      const eyeH = headY + 0.018;
+      const eyeZ = B.headR * 0.86;
+      eyeWhiteL.position.set(-eyeSpread, eyeH, eyeZ);
+      eyeWhiteR.position.set(eyeSpread, eyeH, eyeZ);
+      eyePupilL.position.set(-eyeSpread, eyeH, eyeZ + 0.015);
+      eyePupilR.position.set(eyeSpread, eyeH, eyeZ + 0.015);
+
+      // Nose
+      nose.position.set(0, headY - 0.02, B.headR * 0.92);
+      nose.scale.set(0.8, 0.7, 0.9);
+
+      // Ears
+      earL.position.set(-(B.headR * 0.95), headY + 0.01, 0);
+      earR_m.position.set(B.headR * 0.95, headY + 0.01, 0);
+      earL.scale.set(0.35, 0.7, 0.5);
+      earR_m.scale.set(0.35, 0.7, 0.5);
+
+      // --- NECK ---
+      neck.position.set(0, headY - B.headR - B.neckH * 0.35, 0);
+      const nkS = 1 + w * 0.15 + m * 0.18;
+      neck.scale.set(nkS, 1, nkS);
+
+      // --- TORSO ---
+      const torsoY = 1.28;
+      torso.position.set(0, torsoY, 0);
+      const tw = B.torsoW * fatScale * (1 + m * 0.18);
+      const th = B.torsoH;
+      const td = B.torsoD * bellyScale * (1 + m * 0.1);
+      torso.scale.set(tw, th, td);
+
+      // Chest
+      chest.position.set(0, torsoY + th * 0.15, td * 0.15);
+      const chestS = m * 0.06;
+      chest.scale.set(tw * (0.6 + m * 0.15), chestS + 0.01, td * 0.3);
+      chest.visible = m > 0.2;
+
+      // --- SHOULDERS ---
+      const shW = B.torsoW * fatScale * (1 + m * 0.28);
+      const shY = torsoY + th * 0.42;
+      const sr = B.shoulderR * (1 + m * 0.55 + w * 0.15);
+      shoulderL.position.set(-shW - sr * 0.25, shY, 0);
+      shoulderR_m.position.set(shW + sr * 0.25, shY, 0);
+      shoulderL.scale.setScalar(sr / B.shoulderR);
+      shoulderR_m.scale.setScalar(sr / B.shoulderR);
+
+      // --- UPPER ARMS ---
+      const armX = shW + sr * 0.5;
+      const uaR = B.upperArmR * (1 + m * 0.6 + w * 0.2);
+      const uaH = B.upperArmH;
+      upperArmL.position.set(-armX, shY - uaH * 0.55, 0);
+      upperArmR_m.position.set(armX, shY - uaH * 0.55, 0);
+      const uaScale = uaR / B.upperArmR;
+      upperArmL.scale.set(uaScale, 1, uaScale);
+      upperArmR_m.scale.set(uaScale, 1, uaScale);
+      upperArmL.rotation.z = 0.1;
+      upperArmR_m.rotation.z = -0.1;
+
+      // --- LOWER ARMS ---
+      const laR = B.lowerArmR * (1 + m * 0.38 + w * 0.12);
+      const laY = shY - uaH - B.lowerArmH * 0.45;
+      lowerArmL.position.set(-armX, laY, 0);
+      lowerArmR_m.position.set(armX, laY, 0);
+      const laScale = laR / B.lowerArmR;
+      lowerArmL.scale.set(laScale, 1, laScale);
+      lowerArmR_m.scale.set(laScale, 1, laScale);
+      lowerArmL.rotation.z = 0.06;
+      lowerArmR_m.rotation.z = -0.06;
+
+      // --- HANDS ---
+      const handY = laY - B.lowerArmH * 0.5 - B.handR;
+      const handScale = 1 + w * 0.08 + m * 0.1;
+      handL.position.set(-armX, handY, 0);
+      handR_m.position.set(armX, handY, 0);
+      handL.scale.setScalar(handScale);
+      handR_m.scale.setScalar(handScale);
+
+      // --- HIPS ---
+      const hipY = torsoY - th * 0.44;
+      const hipW = B.hipW * fatScale * (1 + m * 0.1);
+      const hipD = B.torsoD * (1 + w * 0.35);
+      hips.position.set(0, hipY, 0);
+      hips.scale.set(hipW, B.torsoH * 0.22, hipD);
+
+      // --- UPPER LEGS ---
+      const legX = hipW * 0.55;
+      const ulR = B.upperLegR * (1 + m * 0.48 + w * 0.25);
+      const ulH = B.upperLegH;
+      upperLegL.position.set(-legX, hipY - ulH * 0.55, 0);
+      upperLegR_m.position.set(legX, hipY - ulH * 0.55, 0);
+      const ulScale = ulR / B.upperLegR;
+      upperLegL.scale.set(ulScale, 1, ulScale);
+      upperLegR_m.scale.set(ulScale, 1, ulScale);
+
+      // --- LOWER LEGS ---
+      const llR = B.lowerLegR * (1 + m * 0.32 + w * 0.15);
+      const llY = hipY - ulH - B.lowerLegH * 0.45;
+      lowerLegL.position.set(-legX, llY, 0);
+      lowerLegR_m.position.set(legX, llY, 0);
+      const llScale = llR / B.lowerLegR;
+      lowerLegL.scale.set(llScale, 1, llScale);
+      lowerLegR_m.scale.set(llScale, 1, llScale);
+
+      // --- FEET ---
+      const feetY = llY - B.lowerLegH * 0.5 - B.footH * 0.5;
+      footL.position.set(-legX, feetY, B.footL * 0.15);
+      footR_m.position.set(legX, feetY, B.footL * 0.15);
+      const fS = 1 + w * 0.15;
+      footL.scale.set(fS, 1, fS);
+      footR_m.scale.set(fS, 1, fS);
+
+      // HUD update
+      document.getElementById('hud-weight').textContent = Math.round(w * 100) + '%';
+      document.getElementById('hud-muscle').textContent = Math.round(m * 100) + '%';
+    }
+
+    // ===================== INITIALIZE =====================
+    updateBody(currentWeight, currentMuscle);
+    bodyGroup.position.set(0, -0.85, 0);
+
+    // Hide loading
+    setTimeout(() => {
+      document.getElementById('loading-overlay').classList.add('hidden');
+      document.getElementById('hud').classList.add('visible');
+    }, 600);
+
+    // ===================== ANIMATION =====================
+    const clock = new THREE.Clock();
+    const AUTO_ROTATE_SPEED = 0.0025;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+      const elapsed = clock.getElapsedTime();
+
+      // Smooth lerp
+      const lerpSpeed = 0.06;
+      currentWeight += (targetWeight - currentWeight) * lerpSpeed;
+      currentMuscle += (targetMuscle - currentMuscle) * lerpSpeed;
+      updateBody(currentWeight, currentMuscle);
+
+      // Rotation with inertia
+      if (!isDragging) {
+        rotationVelocity *= 0.94;
+        rotationY += rotationVelocity + AUTO_ROTATE_SPEED;
+      }
+      bodyGroup.rotation.y = rotationY;
+
+      // Subtle body breathing
+      bodyGroup.position.y = -0.85 + Math.sin(elapsed * 1.5) * 0.005;
+
+      // Animate particles
+      const pPos = particleGeom.attributes.position.array;
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        pPos[i * 3 + 1] += 0.002;
+        if (pPos[i * 3 + 1] > 4) pPos[i * 3 + 1] = 0;
+        // Subtle horizontal sway
+        pPos[i * 3] += Math.sin(elapsed + i) * 0.0003;
+      }
+      particleGeom.attributes.position.needsUpdate = true;
+      particleMat.opacity = 0.25 + Math.sin(elapsed * 0.5) * 0.1;
+
+      // Animate ground ring glow
+      ringMat.opacity = 0.06 + Math.sin(elapsed * 2) * 0.03;
+
+      // Subtle camera bob
+      camera.position.y = 1.05 + Math.sin(elapsed * 0.8) * 0.01;
+      camera.lookAt(0, 1.0, 0);
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // ===================== RESIZE =====================
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    postToRN({ type: 'ready' });
+    postToRN({ type: 'loaded', hasMesh: true });
+  })();
+  </script>
+</body>
+</html>
